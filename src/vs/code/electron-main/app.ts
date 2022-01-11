@@ -31,6 +31,7 @@ import { localize } from 'vs/nls';
 import { IBackupMainService } from 'vs/platform/backup/electron-main/backup';
 import { BackupMainService } from 'vs/platform/backup/electron-main/backupMainService';
 import { IConfigurationService } from 'vs/platform/configuration/common/configuration';
+import { CredentialsMainService, ICredentialsMainService } from 'vs/platform/credentials/node/credentialsMainService';
 import { ElectronExtensionHostDebugBroadcastChannel } from 'vs/platform/debug/electron-main/extensionHostDebugIpc';
 import { IDiagnosticsService } from 'vs/platform/diagnostics/common/diagnostics';
 import { DialogMainService, IDialogMainService } from 'vs/platform/dialogs/electron-main/dialogMainService';
@@ -501,6 +502,9 @@ export class CodeApplication extends Disposable {
 		// Native Host
 		services.set(INativeHostMainService, new SyncDescriptor(NativeHostMainService, [sharedProcess]));
 
+		// Credentials
+		services.set(ICredentialsMainService, new SyncDescriptor(CredentialsMainService));
+
 		// Webview Manager
 		services.set(IWebviewManagerService, new SyncDescriptor(WebviewMainService));
 
@@ -585,6 +589,10 @@ export class CodeApplication extends Disposable {
 		const encryptionChannel = ProxyChannel.fromService(accessor.get(IEncryptionMainService));
 		mainProcessElectronServer.registerChannel('encryption', encryptionChannel);
 
+		// Credentials
+		const credentialsChannel = ProxyChannel.fromService(accessor.get(ICredentialsMainService));
+		mainProcessElectronServer.registerChannel('credentials', credentialsChannel);
+
 		// Signing
 		const signChannel = ProxyChannel.fromService(accessor.get(ISignService));
 		mainProcessElectronServer.registerChannel('sign', signChannel);
@@ -598,6 +606,7 @@ export class CodeApplication extends Disposable {
 		const nativeHostChannel = ProxyChannel.fromService(this.nativeHostMainService);
 		mainProcessElectronServer.registerChannel('nativeHost', nativeHostChannel);
 		sharedProcessClient.then(client => client.registerChannel('nativeHost', nativeHostChannel));
+
 
 		// Workspaces
 		const workspacesChannel = ProxyChannel.fromService(accessor.get(IWorkspacesService));
