@@ -269,6 +269,7 @@ class BrowserMain extends Disposable {
 
 		// Credentials Service
 		const credentialsService = new BrowserCredentialsService(environmentService);
+		serviceCollection.set(ICredentialsService, credentialsService);
 
 		// Userdata Initialize Service
 		const userDataInitializationService = new UserDataInitializationService(environmentService, credentialsService, userDataSyncStoreManagementService, fileService, storageService, productService, requestService, logService, uriIdentityService);

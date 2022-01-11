@@ -19,6 +19,7 @@ export class BrowserCredentialsService extends Disposable implements ICredential
 
 	constructor(@IWorkbenchEnvironmentService environmentService: IWorkbenchEnvironmentService) {
 		super();
+		console.log('reggggggggggggie');
 
 		if (environmentService.options && environmentService.options.credentialsProvider) {
 			this.credentialsProvider = environmentService.options.credentialsProvider;
