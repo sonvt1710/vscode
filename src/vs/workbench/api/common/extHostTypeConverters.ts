@@ -657,7 +657,8 @@ export namespace WorkspaceEdit {
 						textEdit: {
 							range: Range.from(entry.range),
 							text: entry.edit.value,
-							insertAsSnippet: true
+							insertAsSnippet: true,
+							keepWhitespace: entry.keepWhitespace
 						},
 						versionId: !toCreate.has(entry.uri) ? versionInfo?.getTextDocumentVersion(entry.uri) : undefined,
 						metadata: entry.metadata
@@ -1616,71 +1617,6 @@ export namespace LanguageSelector {
 				notebookType: filter.notebookType
 			};
 		}
-	}
-}
-
-export namespace MappedEditsContext {
-
-	export function is(v: unknown): v is vscode.MappedEditsContext {
-		return (
-			!!v && typeof v === 'object' &&
-			'documents' in v &&
-			Array.isArray(v.documents) &&
-			v.documents.every(
-				subArr => Array.isArray(subArr) &&
-					subArr.every(DocumentContextItem.is))
-		);
-	}
-
-	export function from(extContext: vscode.MappedEditsContext): Dto<languages.MappedEditsContext> {
-		return {
-			documents: extContext.documents.map((subArray) =>
-				subArray.map(DocumentContextItem.from)
-			),
-			conversation: extContext.conversation?.map(item => (
-				(item.type === 'request') ?
-					{
-						type: 'request',
-						message: item.message,
-					} :
-					{
-						type: 'response',
-						message: item.message,
-						result: item.result ? ChatAgentResult.from(item.result) : undefined,
-						references: item.references?.map(DocumentContextItem.from)
-					}
-			))
-		};
-
-	}
-}
-
-export namespace DocumentContextItem {
-
-	export function is(item: unknown): item is vscode.DocumentContextItem {
-		return (
-			typeof item === 'object' &&
-			item !== null &&
-			'uri' in item && URI.isUri(item.uri) &&
-			'version' in item && typeof item.version === 'number' &&
-			'ranges' in item && Array.isArray(item.ranges) && item.ranges.every((r: unknown) => r instanceof types.Range)
-		);
-	}
-
-	export function from(item: vscode.DocumentContextItem): Dto<languages.DocumentContextItem> {
-		return {
-			uri: item.uri,
-			version: item.version,
-			ranges: item.ranges.map(r => Range.from(r)),
-		};
-	}
-
-	export function to(item: Dto<languages.DocumentContextItem>): vscode.DocumentContextItem {
-		return {
-			uri: URI.revive(item.uri),
-			version: item.version,
-			ranges: item.ranges.map(r => Range.to(r)),
-		};
 	}
 }
 
@@ -2864,7 +2800,7 @@ export namespace ChatPromptReference {
 			range: variable.range && [variable.range.start, variable.range.endExclusive],
 			value: isUriComponents(value) ? URI.revive(value) :
 				value && typeof value === 'object' && 'uri' in value && 'range' in value && isUriComponents(value.uri) ?
-					Location.to(revive(value)) : variable.isImage ? new types.ChatReferenceBinaryData(variable.mimeType ?? 'image/png', () => Promise.resolve(new Uint8Array(Object.values(value)))) : value,
+					Location.to(revive(value)) : variable.isImage ? new types.ChatReferenceBinaryData(variable.mimeType ?? 'image/png', () => Promise.resolve(new Uint8Array(Object.values(value))), variable.references && URI.isUri(variable.references[0].reference) ? variable.references[0].reference : undefined) : value,
 			modelDescription: variable.modelDescription,
 			isReadonly: hasReadonlyProposal ? variable.isMarkedReadonly : undefined,
 		};

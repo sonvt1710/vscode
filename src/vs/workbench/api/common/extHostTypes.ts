@@ -766,6 +766,8 @@ export class SnippetTextEdit implements vscode.SnippetTextEdit {
 
 	snippet: SnippetString;
 
+	keepWhitespace?: boolean;
+
 	constructor(range: Range, snippet: SnippetString) {
 		this.range = range;
 		this.snippet = snippet;
@@ -809,6 +811,7 @@ export interface IFileSnippetTextEdit {
 	readonly range: vscode.Range;
 	readonly edit: vscode.SnippetString;
 	readonly metadata?: vscode.WorkspaceEditEntryMetadata;
+	readonly keepWhitespace?: boolean;
 }
 
 export interface IFileCellEdit {
@@ -938,7 +941,7 @@ export class WorkspaceEdit implements vscode.WorkspaceEdit {
 						this.replaceNotebookCells(uri, edit.range, edit.newCells, metadata);
 					}
 				} else if (SnippetTextEdit.isSnippetTextEdit(edit)) {
-					this._edits.push({ _type: FileEditType.Snippet, uri, range: edit.range, edit: edit.snippet, metadata });
+					this._edits.push({ _type: FileEditType.Snippet, uri, range: edit.range, edit: edit.snippet, metadata, keepWhitespace: edit.keepWhitespace });
 
 				} else {
 					this._edits.push({ _type: FileEditType.Text, uri, edit, metadata });
@@ -2072,6 +2075,22 @@ export enum TerminalShellExecutionCommandLineConfidence {
 	High = 2
 }
 
+export enum TerminalShellType {
+	Sh = 1,
+	Bash = 2,
+	Fish = 3,
+	Csh = 4,
+	Ksh = 5,
+	Zsh = 6,
+	CommandPrompt = 7,
+	GitBash = 8,
+	PowerShell = 9,
+	Python = 10,
+	Julia = 11,
+	NuShell = 12,
+	Node = 13
+}
+
 export class TerminalLink implements vscode.TerminalLink {
 	constructor(
 		public startIndex: number,
@@ -2124,7 +2143,8 @@ export enum TerminalCompletionItemKind {
 	Folder = 1,
 	Flag = 2,
 	Method = 3,
-	Argument = 4
+	Argument = 4,
+	Alias = 5
 }
 
 export class TerminalCompletionItem implements vscode.TerminalCompletionItem {
@@ -4682,9 +4702,11 @@ export class ChatRequestNotebookData implements vscode.ChatRequestNotebookData {
 export class ChatReferenceBinaryData implements vscode.ChatReferenceBinaryData {
 	mimeType: string;
 	data: () => Thenable<Uint8Array>;
-	constructor(mimeType: string, data: () => Thenable<Uint8Array>) {
+	reference?: vscode.Uri;
+	constructor(mimeType: string, data: () => Thenable<Uint8Array>, reference?: vscode.Uri) {
 		this.mimeType = mimeType;
 		this.data = data;
+		this.reference = reference;
 	}
 }
 
