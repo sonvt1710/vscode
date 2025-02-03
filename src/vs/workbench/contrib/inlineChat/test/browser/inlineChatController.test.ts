@@ -34,7 +34,6 @@ import { IChatAccessibilityService, IChatWidget, IChatWidgetService } from '../.
 import { ChatAgentLocation, ChatAgentService, IChatAgentData, IChatAgentNameService, IChatAgentService } from '../../../chat/common/chatAgents.js';
 import { IChatResponseViewModel } from '../../../chat/common/chatViewModel.js';
 import { InlineChatController, State } from '../../browser/inlineChatController.js';
-import { Session } from '../../browser/inlineChatSession.js';
 import { CTX_INLINE_CHAT_RESPONSE_TYPE, CTX_INLINE_CHAT_USER_DID_EDIT, InlineChatConfigKeys, InlineChatResponseType } from '../../common/inlineChat.js';
 import { TestViewsService, workbenchInstantiationService } from '../../../../test/browser/workbenchTestServices.js';
 import { IExtensionService, nullExtensionDescription } from '../../../../services/extensions/common/extensions.js';
@@ -61,7 +60,6 @@ import { CancellationToken } from '../../../../../base/common/cancellation.js';
 import { assertType } from '../../../../../base/common/types.js';
 import { IWorkbenchAssignmentService } from '../../../../services/assignment/common/assignmentService.js';
 import { NullWorkbenchAssignmentService } from '../../../../services/assignment/test/common/nullAssignmentService.js';
-import { IInlineChatSavingService } from '../../browser/inlineChatSavingService.js';
 import { IInlineChatSessionService } from '../../browser/inlineChatSessionService.js';
 import { InlineChatSessionServiceImpl } from '../../browser/inlineChatSessionServiceImpl.js';
 import { TestWorkerService } from './testWorkerService.js';
@@ -70,7 +68,7 @@ import { IChatEditingService, IChatEditingSession } from '../../../chat/common/c
 import { ITextModelService } from '../../../../../editor/common/services/resolverService.js';
 import { TextModelResolverService } from '../../../../services/textmodelResolver/common/textModelResolverService.js';
 import { ChatInputBoxContentProvider } from '../../../chat/browser/chatEdinputInputContentProvider.js';
-import { IObservable, observableValue } from '../../../../../base/common/observable.js';
+import { constObservable, IObservable, observableValue } from '../../../../../base/common/observable.js';
 import { ILanguageModelToolsService } from '../../../chat/common/languageModelToolsService.js';
 import { MockLanguageModelToolsService } from '../../../chat/test/common/mockLanguageModelToolsService.js';
 
@@ -165,12 +163,8 @@ suite('InlineChatController', function () {
 			[IInlineChatSessionService, new SyncDescriptor(InlineChatSessionServiceImpl)],
 			[ICommandService, new SyncDescriptor(TestCommandService)],
 			[IChatEditingService, new class extends mock<IChatEditingService>() {
-				override currentEditingSessionObs: IObservable<IChatEditingSession | null> = observableValue(this, null);
-			}],
-			[IInlineChatSavingService, new class extends mock<IInlineChatSavingService>() {
-				override markChanged(session: Session): void {
-					// noop
-				}
+				override globalEditingSessionObs: IObservable<IChatEditingSession | null> = observableValue(this, null);
+				override editingSessionsObs: IObservable<readonly IChatEditingSession[]> = constObservable([]);
 			}],
 			[IEditorProgressService, new class extends mock<IEditorProgressService>() {
 				override show(total: unknown, delay?: unknown): IProgressRunner {
@@ -847,8 +841,7 @@ suite('InlineChatController', function () {
 		const newSession = await inlineChatSessionService.createSession(editor, {}, CancellationToken.None);
 		assertType(newSession);
 
-		await chatService.sendRequest(newSession.chatModel.sessionId, 'Existing', { location: ChatAgentLocation.Editor });
-
+		await (await chatService.sendRequest(newSession.chatModel.sessionId, 'Existing', { location: ChatAgentLocation.Editor }))?.responseCreatedPromise;
 
 		assert.strictEqual(newSession.chatModel.requestInProgress, true);
 

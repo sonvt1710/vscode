@@ -21,7 +21,8 @@ import { SuggestWidgetStatus } from '../../../../editor/contrib/suggest/browser/
 import { MenuId } from '../../../../platform/actions/common/actions.js';
 import { IConfigurationService } from '../../../../platform/configuration/common/configuration.js';
 import { IStorageService, StorageScope, StorageTarget } from '../../../../platform/storage/common/storage.js';
-import { SimpleSuggestDetailsOverlay, SimpleSuggestDetailsWidget } from './simpleSuggestWidgetDetails.js';
+import { canExpandCompletionItem, SimpleSuggestDetailsOverlay, SimpleSuggestDetailsWidget } from './simpleSuggestWidgetDetails.js';
+import { IContextKey, IContextKeyService, RawContextKey } from '../../../../platform/contextkey/common/contextkey.js';
 
 const $ = dom.$;
 
@@ -51,12 +52,21 @@ const enum WidgetPositionPreference {
 	Below
 }
 
+export const SimpleSuggestContext = {
+	HasFocusedSuggestion: new RawContextKey<boolean>('simpleSuggestWidgetHasFocusedSuggestion', false, localize('simpleSuggestWidgetHasFocusedSuggestion', "Whether any simple suggestion is focused")),
+};
+
 export interface IWorkbenchSuggestWidgetOptions {
 	/**
 	 * The {@link MenuId} to use for the status bar. Items on the menu must use the groups `'left'`
 	 * and `'right'`.
 	 */
 	statusBarMenuId?: MenuId;
+
+	/**
+	 * The setting for showing the status bar.
+	 */
+	showStatusBarSettingId?: string;
 }
 
 export class SimpleSuggestWidget extends Disposable {
@@ -80,7 +90,7 @@ export class SimpleSuggestWidget extends Disposable {
 	private readonly _messageElement: HTMLElement;
 	private readonly _listElement: HTMLElement;
 	private readonly _list: List<SimpleCompletionItem>;
-	private readonly _status?: SuggestWidgetStatus;
+	private _status?: SuggestWidgetStatus;
 	private readonly _details: SimpleSuggestDetailsOverlay;
 
 	private readonly _showTimeout = this._register(new TimeoutTimer());
@@ -93,23 +103,31 @@ export class SimpleSuggestWidget extends Disposable {
 	readonly onDidShow: Event<this> = this._onDidShow.event;
 	private readonly _onDidFocus = new PauseableEmitter<ISimpleSelectedSuggestion>();
 	readonly onDidFocus: Event<ISimpleSelectedSuggestion> = this._onDidFocus.event;
+	private readonly _onDidBlurDetails = this._register(new Emitter<FocusEvent>());
+	readonly onDidBlurDetails = this._onDidBlurDetails.event;
+	private readonly _onDidFontConfigurationChange = this._register(new Emitter<void>());
+	readonly onDidFontConfigurationChange = this._onDidFontConfigurationChange.event;
 
 	get list(): List<SimpleCompletionItem> { return this._list; }
+
+	private readonly _ctxSuggestWidgetHasFocusedSuggestion: IContextKey<boolean>;
 
 	constructor(
 		private readonly _container: HTMLElement,
 		private readonly _persistedSize: IPersistedWidgetSizeDelegate,
-		private readonly _getFontInfo: () => ISimpleSuggestWidgetFontInfo,
-		options: IWorkbenchSuggestWidgetOptions,
+		private readonly _options: IWorkbenchSuggestWidgetOptions,
 		@IInstantiationService instantiationService: IInstantiationService,
-		@IConfigurationService configurationService: IConfigurationService,
+		@IConfigurationService private readonly _configurationService: IConfigurationService,
 		@IStorageService private readonly _storageService: IStorageService,
+		@IContextKeyService _contextKeyService: IContextKeyService
 	) {
 		super();
 
 		this.element = this._register(new ResizableHTMLElement());
 		this.element.domNode.classList.add('workbench-suggest-widget');
 		this._container.appendChild(this.element.domNode);
+
+		this._ctxSuggestWidgetHasFocusedSuggestion = SimpleSuggestContext.HasFocusedSuggestion.bindTo(_contextKeyService);
 
 		class ResizeState {
 			constructor(
@@ -158,10 +176,10 @@ export class SimpleSuggestWidget extends Disposable {
 			state = undefined;
 		}));
 
-		const applyIconStyle = () => this.element.domNode.classList.toggle('no-icons', !configurationService.getValue('editor.suggest.showIcons'));
+		const applyIconStyle = () => this.element.domNode.classList.toggle('no-icons', !_configurationService.getValue('editor.suggest.showIcons'));
 		applyIconStyle();
 
-		const renderer = new SimpleSuggestWidgetItemRenderer(_getFontInfo);
+		const renderer = new SimpleSuggestWidgetItemRenderer(this._getFontInfo.bind(this), this._configurationService);
 		this._register(renderer);
 		this._listElement = dom.append(this.element.domNode, $('.tree'));
 		this._list = this._register(new List('SuggestWidget', this._listElement, {
@@ -210,12 +228,13 @@ export class SimpleSuggestWidget extends Disposable {
 
 		this._messageElement = dom.append(this.element.domNode, dom.$('.message'));
 
-		const details: SimpleSuggestDetailsWidget = this._register(instantiationService.createInstance(SimpleSuggestDetailsWidget));
+		const details: SimpleSuggestDetailsWidget = this._register(instantiationService.createInstance(SimpleSuggestDetailsWidget, this._getFontInfo.bind(this), this.onDidFontConfigurationChange));
 		this._register(details.onDidClose(() => this.toggleDetails()));
 		this._details = this._register(new SimpleSuggestDetailsOverlay(details, this._listElement));
+		this._register(dom.addDisposableListener(this._details.widget.domNode, 'blur', (e) => this._onDidBlurDetails.fire(e)));
 
-		if (options.statusBarMenuId) {
-			this._status = this._register(instantiationService.createInstance(SuggestWidgetStatus, this.element.domNode, options.statusBarMenuId));
+		if (_options.statusBarMenuId && _options.showStatusBarSettingId && _configurationService.getValue(_options.showStatusBarSettingId)) {
+			this._status = this._register(instantiationService.createInstance(SuggestWidgetStatus, this.element.domNode, _options.statusBarMenuId));
 			this.element.domNode.classList.toggle('with-status-bar', true);
 		}
 
@@ -223,9 +242,32 @@ export class SimpleSuggestWidget extends Disposable {
 		this._register(this._list.onTap(e => this._onListMouseDownOrTap(e)));
 		this._register(this._list.onDidChangeFocus(e => this._onListFocus(e)));
 		this._register(this._list.onDidChangeSelection(e => this._onListSelection(e)));
-		this._register(configurationService.onDidChangeConfiguration(e => {
+		this._register(_configurationService.onDidChangeConfiguration(e => {
 			if (e.affectsConfiguration('editor.suggest.showIcons')) {
 				applyIconStyle();
+			}
+			if (this._completionModel && (
+				e.affectsConfiguration('editor.fontSize') ||
+				e.affectsConfiguration('editor.lineHeight') ||
+				e.affectsConfiguration('editor.fontWeight') ||
+				e.affectsConfiguration('editor.fontFamily'))) {
+				this._list.splice(0, this._completionModel.items.length, this._completionModel!.items);
+				this._onDidFontConfigurationChange.fire();
+			}
+			if (_options.statusBarMenuId && _options.showStatusBarSettingId && e.affectsConfiguration(_options.showStatusBarSettingId)) {
+				const showStatusBar: boolean = _configurationService.getValue(_options.showStatusBarSettingId);
+				if (showStatusBar && !this._status) {
+					this._status = this._register(instantiationService.createInstance(SuggestWidgetStatus, this.element.domNode, _options.statusBarMenuId));
+					this._status.show();
+				} else if (showStatusBar && this._status) {
+					this._status.show();
+				} else if (this._status) {
+					this._status.element.remove();
+					this._status.dispose();
+					this._status = undefined;
+					this._layout(undefined);
+				}
+				this.element.domNode.classList.toggle('with-status-bar', showStatusBar);
 			}
 		}));
 	}
@@ -246,6 +288,7 @@ export class SimpleSuggestWidget extends Disposable {
 				this._currentSuggestionDetails.cancel();
 				this._currentSuggestionDetails = undefined;
 				this._focusedItem = undefined;
+				this._ctxSuggestWidgetHasFocusedSuggestion.set(false);
 			}
 			this._clearAriaActiveDescendant();
 			return;
@@ -255,7 +298,7 @@ export class SimpleSuggestWidget extends Disposable {
 			return;
 		}
 
-		// this._ctxSuggestWidgetHasFocusedSuggestion.set(true);
+		this._ctxSuggestWidgetHasFocusedSuggestion.set(true);
 		const item = e.elements[0];
 		const index = e.indexes[0];
 
@@ -414,15 +457,12 @@ export class SimpleSuggestWidget extends Disposable {
 					dom.hide(this._messageElement, this._listElement, this._status.element);
 				}
 				dom.hide(this._listElement);
-				if (this._status) {
-					dom.hide(this._status?.element);
-				}
-				// this._details.hide(true);
+				this._details.hide(true);
 				this._status?.hide();
 				// this._contentWidget.hide();
 				// this._ctxSuggestWidgetVisible.reset();
 				// this._ctxSuggestWidgetMultipleSuggestions.reset();
-				// this._ctxSuggestWidgetHasFocusedSuggestion.reset();
+				this._ctxSuggestWidgetHasFocusedSuggestion.reset();
 				this._showTimeout.cancel();
 				this.element.domNode.classList.remove('visible');
 				this._list.splice(0, this._list.length);
@@ -435,50 +475,49 @@ export class SimpleSuggestWidget extends Disposable {
 				this._messageElement.textContent = SimpleSuggestWidget.LOADING_MESSAGE;
 				dom.hide(this._listElement);
 				if (this._status) {
-					dom.hide(this._status?.element);
+					dom.hide(this._status.element);
 				}
 				dom.show(this._messageElement);
-				// this._details.hide();
+				this._details.hide();
 				this._show();
-				// this._focusedItem = undefined;
+				this._focusedItem = undefined;
 				break;
 			case State.Empty:
 				this.element.domNode.classList.add('message');
 				this._messageElement.textContent = SimpleSuggestWidget.NO_SUGGESTIONS_MESSAGE;
 				dom.hide(this._listElement);
 				if (this._status) {
-					dom.hide(this._status?.element);
+					dom.hide(this._status.element);
 				}
 				dom.show(this._messageElement);
-				// this._details.hide();
+				this._details.hide();
 				this._show();
-				// this._focusedItem = undefined;
+				this._focusedItem = undefined;
 				break;
 			case State.Open:
 				dom.hide(this._messageElement);
-				dom.show(this._listElement);
-				if (this._status) {
-					dom.show(this._status?.element);
-				}
+				this._showListAndStatus();
 				this._show();
 				break;
 			case State.Frozen:
 				dom.hide(this._messageElement);
-				dom.show(this._listElement);
-				if (this._status) {
-					dom.show(this._status?.element);
-				}
+				this._showListAndStatus();
 				this._show();
 				break;
 			case State.Details:
 				dom.hide(this._messageElement);
-				dom.show(this._listElement);
-				if (this._status) {
-					dom.show(this._status?.element);
-				}
-				// this._details.show();
+				this._showListAndStatus();
+				this._details.show();
 				this._show();
 				break;
+		}
+	}
+
+	private _showListAndStatus(): void {
+		if (this._status) {
+			dom.show(this._listElement, this._status.element);
+		} else {
+			dom.show(this._listElement);
 		}
 	}
 
@@ -521,13 +560,15 @@ export class SimpleSuggestWidget extends Disposable {
 			// hide details widget
 			this._pendingShowDetails.clear();
 			// this._ctxSuggestWidgetDetailsVisible.set(false);
+
 			this._setDetailsVisible(false);
 			this._details.hide();
 			this.element.domNode.classList.remove('shows-details');
 
-		} else if ((this._explainMode) && (this._state === State.Open || this._state === State.Details || this._state === State.Frozen)) {
+		} else if ((canExpandCompletionItem(this._list.getFocusedElements()[0]) || this._explainMode) && (this._state === State.Open || this._state === State.Details || this._state === State.Frozen)) {
 			// show details widget (iff possible)
 			// this._ctxSuggestWidgetDetailsVisible.set(true);
+
 			this._setDetailsVisible(true);
 			this._showDetails(false, focused);
 		}
@@ -569,7 +610,6 @@ export class SimpleSuggestWidget extends Disposable {
 			}
 		}
 	}
-
 
 	hide(): void {
 		this._pendingLayout.clear();
@@ -613,7 +653,7 @@ export class SimpleSuggestWidget extends Disposable {
 
 		// status bar
 		if (this._status) {
-			this._status.element.style.lineHeight = `${info.itemHeight}px`;
+			this._status.element.style.height = `${info.itemHeight}px`;
 		}
 
 		// if (this._state === State.Empty || this._state === State.Loading) {
@@ -719,9 +759,10 @@ export class SimpleSuggestWidget extends Disposable {
 		this._listElement.style.height = `${height - statusBarHeight}px`;
 
 		this._listElement.style.width = `${width}px`;
-		this._listElement.style.height = `${height}px`;
 		this.element.layout(height, width);
-
+		if (this._cursorPosition) {
+			this.element.domNode.style.top = `${this._cursorPosition.top - height}px`;
+		}
 		this._positionDetails();
 	}
 
@@ -731,11 +772,36 @@ export class SimpleSuggestWidget extends Disposable {
 		}
 	}
 
+	private _getFontInfo(): ISimpleSuggestWidgetFontInfo {
+		let lineHeight: number = this._configurationService.getValue('editor.lineHeight');
+		const fontSize: number = this._configurationService.getValue('editor.fontSize');
+		const fontFamily: string = this._configurationService.getValue('editor.fontFamily');
+		const fontWeight: string = this._configurationService.getValue('editor.fontWeight');
+		const letterSpacing: number = this._configurationService.getValue('editor.letterSpacing');
+
+		if (lineHeight <= 1) {
+			// Scale so icon shows by default
+			lineHeight = fontSize < 16 ? Math.ceil(fontSize * 1.5) : fontSize;
+		} else if (lineHeight <= 8) {
+			lineHeight = fontSize * lineHeight;
+		}
+
+		const fontInfo = {
+			fontSize,
+			lineHeight,
+			fontWeight: fontWeight.toString(),
+			letterSpacing,
+			fontFamily
+		};
+
+		return fontInfo;
+	}
+
 	private _getLayoutInfo() {
 		const fontInfo = this._getFontInfo();
-		const itemHeight = clamp(Math.ceil(fontInfo.lineHeight), 8, 1000);
-		const statusBarHeight = 0; //!this.editor.getOption(EditorOption.suggest).showStatusBar || this._state === State.Empty || this._state === State.Loading ? 0 : itemHeight;
-		const borderWidth = 1; //this._details.widget.borderWidth;
+		const itemHeight = clamp(fontInfo.lineHeight, 8, 1000);
+		const statusBarHeight = !this._options.statusBarMenuId || !this._options.showStatusBarSettingId || !this._configurationService.getValue(this._options.showStatusBarSettingId) || this._state === State.Empty || this._state === State.Loading ? 0 : itemHeight;
+		const borderWidth = this._details.widget.borderWidth;
 		const borderHeight = 2 * borderWidth;
 
 		return {
