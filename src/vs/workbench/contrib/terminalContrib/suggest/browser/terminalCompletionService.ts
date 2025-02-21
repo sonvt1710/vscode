@@ -204,9 +204,13 @@ export class TerminalCompletionService extends Disposable implements ITerminalCo
 			// for tests, make sure the right path separator is used
 			promptValue = promptValue.replaceAll(/[\\/]/g, resourceRequestConfig.pathSeparator);
 		}
-		const cwd = URI.revive(resourceRequestConfig.cwd);
-		const foldersRequested = resourceRequestConfig.foldersRequested ?? false;
+
+		// Files requested implies folders requested since the file could be in any folder. We could
+		// provide diagnostics when a folder is provided where a file is expected.
+		const foldersRequested = (resourceRequestConfig.foldersRequested || resourceRequestConfig.filesRequested) ?? false;
 		const filesRequested = resourceRequestConfig.filesRequested ?? false;
+
+		const cwd = URI.revive(resourceRequestConfig.cwd);
 		if (!cwd || (!foldersRequested && !filesRequested)) {
 			return;
 		}
@@ -472,9 +476,9 @@ export class TerminalCompletionService extends Disposable implements ITerminalCo
 	}
 
 	private _getEnvVar(key: string, capabilities: ITerminalCapabilityStore): string | undefined {
-		const env = capabilities.get(TerminalCapability.ShellEnvDetection)?.env;
+		const env = capabilities.get(TerminalCapability.ShellEnvDetection)?.env?.value as { [key: string]: string | undefined };
 		if (env) {
-			return env.get(key);
+			return env[key];
 		}
 		return this._processEnv[key];
 	}

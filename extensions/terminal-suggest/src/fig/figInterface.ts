@@ -16,6 +16,7 @@ import type { ICompletionResource } from '../types';
 import { osIsWindows } from '../helpers/os';
 import { removeAnyFileExtension } from '../helpers/file';
 import type { EnvironmentVariable } from './api-bindings/types';
+import { IFigExecuteExternals } from './execute';
 
 export interface IFigSpecSuggestionsResult {
 	filesRequested: boolean;
@@ -34,7 +35,8 @@ export async function getFigSuggestions(
 	env: Record<string, string>,
 	name: string,
 	precedingText: string,
-	token?: vscode.CancellationToken
+	executeExternals: IFigExecuteExternals,
+	token?: vscode.CancellationToken,
 ): Promise<IFigSpecSuggestionsResult> {
 	const result: IFigSpecSuggestionsResult = {
 		filesRequested: false,
@@ -51,8 +53,8 @@ export async function getFigSuggestions(
 
 		for (const specLabel of specLabels) {
 			const availableCommand = (osIsWindows()
-				? availableCommands.find(command => command.label.match(new RegExp(`${specLabel}(\\.[^ ]+)?$`)))
-				: availableCommands.find(command => command.label.startsWith(specLabel)));
+				? availableCommands.find(command => (typeof command.label === 'string' ? command.label : command.label.label).match(new RegExp(`${specLabel}(\\.[^ ]+)?$`)))
+				: availableCommands.find(command => (typeof command.label === 'string' ? command.label : command.label.label).startsWith(specLabel)));
 			if (!availableCommand || (token && token.isCancellationRequested)) {
 				continue;
 			}
@@ -60,11 +62,12 @@ export async function getFigSuggestions(
 			// push it to the completion items
 			if (tokenType === TokenType.Command) {
 				if (availableCommand.kind !== vscode.TerminalCompletionItemKind.Alias) {
+					const description = getFixSuggestionDescription(spec);
 					result.items.push(createCompletionItem(
 						terminalContext.cursorPosition,
 						prefix,
-						{ label: specLabel },
-						getFixSuggestionDescription(spec),
+						{ label: { label: specLabel, description } },
+						description,
 						availableCommand.detail)
 					);
 				}
@@ -72,18 +75,18 @@ export async function getFigSuggestions(
 			}
 
 			const commandAndAliases = (osIsWindows()
-				? availableCommands.filter(command => specLabel === removeAnyFileExtension(command.definitionCommand ?? command.label))
+				? availableCommands.filter(command => specLabel === removeAnyFileExtension(command.definitionCommand ?? (typeof command.label === 'string' ? command.label : command.label.label)))
 				: availableCommands.filter(command => specLabel === (command.definitionCommand ?? command.label)));
 			if (
 				!(osIsWindows()
-					? commandAndAliases.some(e => precedingText.startsWith(`${removeAnyFileExtension(e.label)} `))
+					? commandAndAliases.some(e => precedingText.startsWith(`${removeAnyFileExtension((typeof e.label === 'string' ? e.label : e.label.label))} `))
 					: commandAndAliases.some(e => precedingText.startsWith(`${e.label} `)))
 			) {
 				// the spec label is not the first word in the command line, so do not provide options or args
 				continue;
 			}
 
-			const completionItemResult = await getFigSpecSuggestions(spec, terminalContext, prefix, shellIntegrationCwd, env, name, token);
+			const completionItemResult = await getFigSpecSuggestions(spec, terminalContext, prefix, shellIntegrationCwd, env, name, executeExternals, token);
 			result.hasCurrentArg ||= !!completionItemResult?.hasCurrentArg;
 			if (completionItemResult) {
 				result.filesRequested ||= completionItemResult.filesRequested;
@@ -104,7 +107,8 @@ async function getFigSpecSuggestions(
 	shellIntegrationCwd: vscode.Uri | undefined,
 	env: Record<string, string>,
 	name: string,
-	token?: vscode.CancellationToken
+	executeExternals: IFigExecuteExternals,
+	token?: vscode.CancellationToken,
 ): Promise<IFigSpecSuggestionsResult | undefined> {
 	let filesRequested = false;
 	let foldersRequested = false;
@@ -124,7 +128,7 @@ async function getFigSpecSuggestions(
 
 	const items: vscode.TerminalCompletionItem[] = [];
 	// TODO: Pass in and respect cancellation token
-	const completionItemResult = await collectCompletionItemResult(command, parsedArguments, prefix, terminalContext, shellIntegrationCwd, env, items);
+	const completionItemResult = await collectCompletionItemResult(command, parsedArguments, prefix, terminalContext, shellIntegrationCwd, env, items, executeExternals);
 	if (token?.isCancellationRequested) {
 		return undefined;
 	}
@@ -151,7 +155,8 @@ export async function collectCompletionItemResult(
 	terminalContext: { commandLine: string; cursorPosition: number },
 	shellIntegrationCwd: vscode.Uri | undefined,
 	env: Record<string, string>,
-	items: vscode.TerminalCompletionItem[]
+	items: vscode.TerminalCompletionItem[],
+	executeExternals: IFigExecuteExternals
 ): Promise<{ filesRequested: boolean; foldersRequested: boolean } | undefined> {
 	let filesRequested = false;
 	let foldersRequested = false;
@@ -190,8 +195,8 @@ export async function collectCompletionItemResult(
 				fuzzySearchEnabled: false,
 				userFuzzySearchEnabled: false,
 			};
-			const s = createGeneratorState(state);
-			const generatorResults = s.triggerGenerators(parsedArguments);
+			const s = createGeneratorState(state, executeExternals);
+			const generatorResults = s.triggerGenerators(parsedArguments, executeExternals);
 			for (const generatorResult of generatorResults) {
 				for (const item of (await generatorResult?.request) ?? []) {
 					if (!item.name) {
