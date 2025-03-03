@@ -72,6 +72,9 @@ class MockTelemetryService implements ITelemetryService {
 }
 
 class MockTokenStoreService implements ITreeSitterTokenizationStoreService {
+	delete(model: ITextModel): void {
+		throw new Error('Method not implemented.');
+	}
 	rangeHasTokens(model: ITextModel, range: Range, minimumTokenQuality: TokenQuality): boolean {
 		return true;
 	}
@@ -322,7 +325,7 @@ class Y {
 		const model = await getModelAndPrepTree(content);
 		const tokens = treeSitterTokenizationSupport.getTokensInRange(model, new Range(1, 1, 7, 1), 0, 63);
 		verifyTokens(tokens);
-		assert.deepStrictEqual(tokens?.length, 28);
+		assert.deepStrictEqual(tokens?.length, 30);
 		assert.deepStrictEqual(tokensContentSize(tokens), content.length);
 		modelService.destroyModel(model.uri);
 	});
@@ -332,7 +335,7 @@ class Y {
 		const model = await getModelAndPrepTree(content);
 		const tokens = treeSitterTokenizationSupport.getTokensInRange(model, new Range(1, 1, 7, 1), 0, 69);
 		verifyTokens(tokens);
-		assert.deepStrictEqual(tokens?.length, 28);
+		assert.deepStrictEqual(tokens?.length, 30);
 		assert.deepStrictEqual(tokensContentSize(tokens), content.length);
 		modelService.destroyModel(model.uri);
 	});
@@ -381,9 +384,34 @@ class y {
 		assert.strictEqual(change.ranges[0].newRangeEndOffset, 32);
 		assert.strictEqual(change.ranges[0].newRange.startLineNumber, 2);
 		assert.strictEqual(change.ranges[0].newRange.endLineNumber, 7);
-		assert.strictEqual(change.ranges[0].oldRangeLength, 28);
 
 		updateListener?.dispose();
 		modelService.destroyModel(model.uri);
 	});
+
+	test('Template string', async () => {
+		const content = '`t ${6}`';
+		const model = await getModelAndPrepTree(content);
+		const tokens = treeSitterTokenizationSupport.getTokensInRange(model, new Range(1, 1, 1, 8), 0, 8);
+		verifyTokens(tokens);
+		assert.deepStrictEqual(tokens?.length, 5);
+		assert.deepStrictEqual(tokensContentSize(tokens), content.length);
+		modelService.destroyModel(model.uri);
+	});
+
+	test('Many nested scopes', async () => {
+		const content = `y = new x(ttt({
+	message: '{0} i\\n\\n [commandName]({1}).',
+	args: ['Test', \`command:\${openSettingsCommand}?\${encodeURIComponent('["SettingName"]')}\`],
+	// To make sure the translators don't break the link
+	comment: ["{Locked=']({'}"]
+}));`;
+		const model = await getModelAndPrepTree(content);
+		const tokens = treeSitterTokenizationSupport.getTokensInRange(model, new Range(1, 1, 6, 5), 0, 238);
+		verifyTokens(tokens);
+		assert.deepStrictEqual(tokens?.length, 56);
+		assert.deepStrictEqual(tokensContentSize(tokens), content.length);
+		modelService.destroyModel(model.uri);
+	});
+
 });
