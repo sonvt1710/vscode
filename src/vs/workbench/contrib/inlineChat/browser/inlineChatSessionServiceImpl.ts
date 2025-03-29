@@ -341,7 +341,7 @@ export class InlineChatSessionServiceImpl implements IInlineChatSessionService {
 
 		const editingSession = await chatModel.editingSessionObs?.promise!;
 		const widget = this._chatWidgetService.getWidgetBySessionId(chatModel.sessionId);
-		widget?.attachmentModel.addFile(uri);
+		await widget?.attachmentModel.addFile(uri);
 
 		const store = new DisposableStore();
 		store.add(toDisposable(() => {
@@ -361,10 +361,11 @@ export class InlineChatSessionServiceImpl implements IInlineChatSessionService {
 
 			const allSettled = entries.every(entry => {
 				const state = entry.state.read(r);
-				return state === WorkingSetEntryState.Accepted || state === WorkingSetEntryState.Rejected;
+				return (state === WorkingSetEntryState.Accepted || state === WorkingSetEntryState.Rejected)
+					&& !entry.isCurrentlyBeingModifiedBy.read(r);
 			});
 
-			if (allSettled) {
+			if (allSettled && !chatModel.requestInProgress) {
 				// self terminate
 				store.dispose();
 			}
@@ -383,7 +384,19 @@ export class InlineChatSessionServiceImpl implements IInlineChatSessionService {
 	}
 
 	getSession2(uri: URI): IInlineChatSession2 | undefined {
-		return this._sessions2.get(uri);
+		let result = this._sessions2.get(uri);
+		if (!result) {
+			// no direct session, try to find an editing session which has a file entry for the uri
+			for (const [_, candidate] of this._sessions2) {
+				const entry = candidate.editingSession.getEntry(uri);
+				if (entry) {
+					result = candidate;
+					break;
+				}
+			}
+		}
+
+		return result;
 	}
 }
 

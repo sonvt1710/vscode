@@ -767,6 +767,7 @@ export abstract class AbstractExtensionGalleryService implements IExtensionGalle
 						extension: string;
 						preRelease: boolean;
 						compatible: boolean;
+						fromFallback: boolean;
 					},
 					{
 						owner: 'sandy081';
@@ -774,10 +775,12 @@ export abstract class AbstractExtensionGalleryService implements IExtensionGalle
 						extension: { classification: 'SystemMetaData'; purpose: 'FeatureInsight'; comment: 'Extension id' };
 						preRelease: { classification: 'SystemMetaData'; purpose: 'FeatureInsight'; comment: 'Get pre-release version' };
 						compatible: { classification: 'SystemMetaData'; purpose: 'FeatureInsight'; comment: 'Get compatible version' };
+						fromFallback: { classification: 'SystemMetaData'; purpose: 'FeatureInsight'; comment: 'From fallback' };
 					}>('galleryService:fallbacktoquery', {
 						extension: extensionInfo.id,
 						preRelease: !!extensionInfo.preRelease,
-						compatible: !!options.compatible
+						compatible: !!options.compatible,
+						fromFallback: !!resourceApi.fallback
 					});
 				toQuery.push(extensionInfo);
 			}
@@ -1377,7 +1380,8 @@ export abstract class AbstractExtensionGalleryService implements IExtensionGalle
 	}
 
 	private getHeaderValue(headers: IHeaders | undefined, name: string): string | undefined {
-		return Array.isArray(headers?.[name]) ? headers![name][0] : headers?.[name];
+		const value = headers?.[name.toLowerCase()];
+		return Array.isArray(value) ? value[0] : value;
 	}
 
 	private async getLatestRawGalleryExtension(extension: string, uri: URI, token: CancellationToken): Promise<IRawGalleryExtension | null> {
