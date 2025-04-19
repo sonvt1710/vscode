@@ -76,7 +76,7 @@ export interface IChatRequestImplicitVariableEntry extends IBaseChatRequestVaria
 	readonly isFile: true;
 	readonly value: URI | Location | undefined;
 	readonly isSelection: boolean;
-	readonly isPrompt: boolean;
+	readonly isPromptFile: boolean;
 	enabled: boolean;
 }
 
@@ -125,6 +125,15 @@ export interface IDiagnosticVariableEntryFilterData {
 	readonly filterUri?: URI;
 	readonly filterSeverity?: MarkerSeverity;
 	readonly filterRange?: IRange;
+}
+
+/**
+ * Chat variable that represents an attached prompt file.
+ */
+export interface IPromptVariableEntry extends IBaseChatRequestVariableEntry {
+	readonly kind: 'file';
+	readonly value: URI | Location;
+	readonly isRoot: boolean;
 }
 
 export namespace IDiagnosticVariableEntryFilterData {
@@ -207,6 +216,10 @@ export function isNotebookOutputVariableEntry(obj: IChatRequestVariableEntry): o
 
 export function isDiagnosticsVariableEntry(obj: IChatRequestVariableEntry): obj is IDiagnosticVariableEntry {
 	return obj.kind === 'diagnostic';
+}
+
+export function isChatRequestFileEntry(obj: IChatRequestVariableEntry): obj is IChatRequestFileEntry {
+	return obj.kind === 'file';
 }
 
 export function isChatRequestVariableEntry(obj: unknown): obj is IChatRequestVariableEntry {
