@@ -881,8 +881,12 @@ export class ChatWidget extends Disposable implements IChatWidget {
 				this.input.setChatMode(this.lastWelcomeViewChatMode ?? ChatModeKind.Ask);
 			}
 
-			this._welcomeRenderScheduler.schedule();
-			this.renderChatTodoListWidget();
+			if (treeItems.length > 0) {
+				this.updateChatViewVisibility();
+				this.renderChatTodoListWidget();
+			} else {
+				this._welcomeRenderScheduler.schedule();
+			}
 
 			this._onWillMaybeChangeHeight.fire();
 
@@ -922,6 +926,20 @@ export class ChatWidget extends Disposable implements IChatWidget {
 
 			this.renderFollowups();
 		}
+	}
+
+	/**
+	 * Updates the DOM visibility of welcome view and chat list immediately
+	 * @internal
+	 */
+	private updateChatViewVisibility(): void {
+		if (!this.viewModel) {
+			return;
+		}
+
+		const numItems = this.viewModel.getItems().length;
+		dom.setVisibility(numItems === 0, this.welcomeMessageContainer);
+		dom.setVisibility(numItems !== 0, this.listContainer);
 	}
 
 	/**
@@ -986,13 +1004,10 @@ export class ChatWidget extends Disposable implements IChatWidget {
 			}
 		}
 
-		if (this.viewModel) {
-			dom.setVisibility(numItems === 0, this.welcomeMessageContainer);
-			dom.setVisibility(numItems !== 0, this.listContainer);
+		this.updateChatViewVisibility();
 
-			if (numItems > 0) {
-				this.refreshHistoryList();
-			}
+		if (numItems > 0) {
+			this.refreshHistoryList();
 		}
 	}
 
