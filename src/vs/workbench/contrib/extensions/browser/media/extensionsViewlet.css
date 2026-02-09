@@ -93,7 +93,8 @@
 .extensions-viewlet .notification-container .message-action-button {
 	cursor: pointer;
 	padding: 1px 6px;
-	border-radius: 2px;
+	border-radius: var(--vscode-cornerRadius-small);
+	font-size: 11px;
 	color: var(--vscode-button-foreground);
 	background-color: var(--vscode-button-background);
 	white-space: nowrap;
