@@ -1001,13 +1001,11 @@ export class StatusUpdater extends Disposable implements IWorkbenchContribution 
 		let badge: IBadge | undefined;
 
 		const extensionsNotification = this.extensionsWorkbenchService.getExtensionsNotification();
-		if (extensionsNotification) {
-			if (extensionsNotification.severity === Severity.Warning) {
-				badge = new WarningBadge(() => extensionsNotification.message);
-			}
+		if (extensionsNotification && extensionsNotification.severity === Severity.Warning) {
+			badge = new WarningBadge(() => extensionsNotification.message);
 		}
 
-		else {
+		if (!badge) {
 			const actionRequired = this.configurationService.getValue(AutoRestartConfigurationKey) === true ? [] : this.extensionsWorkbenchService.installed.filter(e => e.runtimeState !== undefined);
 			const outdated = this.extensionsWorkbenchService.outdated.reduce((r, e) => r + (this.extensionEnablementService.isEnabled(e.local!) && !actionRequired.includes(e) ? 1 : 0), 0);
 			const newBadgeNumber = outdated + actionRequired.length;
