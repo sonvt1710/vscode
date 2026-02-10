@@ -669,7 +669,7 @@ export class ExtensionsListView extends AbstractExtensionsListView<IExtension> {
 		let { value, includedCategories, excludedCategories } = this.parseCategories(query.value);
 		local = local.filter(e => e.runtimeState !== undefined);
 
-		value = value.replace(/@restartrequired/g, '').replace(/@sort:(\w+)(-\w*)?/g, '').trim().toLowerCase();
+		value = value.replace(/@restartrequired/gi, '').replace(/@sort:(\w+)(-\w*)?/g, '').trim().toLowerCase();
 
 		const result = local.filter(e =>
 			(e.name.toLowerCase().indexOf(value) > -1 || e.displayName.toLowerCase().indexOf(value) > -1)
