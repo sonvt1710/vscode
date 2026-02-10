@@ -715,10 +715,15 @@ export class ExtensionRestartRequiredWidget extends ExtensionWidget {
 		this.disposables.clear();
 		this.container.innerText = '';
 
-		if (this.extension?.runtimeState) {
+		const runtimeState = this.extension?.runtimeState;
+		const reason = typeof runtimeState?.reason === 'string' ? runtimeState.reason : '';
+
+		// Only show "Restart Required" when the runtime state reason clearly indicates
+		// a restart or reload is needed, to avoid mislabeling other runtime actions.
+		if (runtimeState && /restart|reload/i.test(reason)) {
 			const element = append(this.container, $('span.extension-restart-required' + ThemeIcon.asCSSSelector(restartRequiredIcon)));
 			append(this.container, $('span.extension-restart-required-label', undefined, localize('restart required', "Restart Required")));
-			this.disposables.add(this.hoverService.setupManagedHover(getDefaultHoverDelegate('mouse'), element, this.extension.runtimeState.reason));
+			this.disposables.add(this.hoverService.setupManagedHover(getDefaultHoverDelegate('mouse'), element, reason));
 		}
 	}
 }
