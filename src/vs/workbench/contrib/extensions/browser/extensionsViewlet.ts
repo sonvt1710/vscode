@@ -796,11 +796,13 @@ export class ExtensionsViewPaneContainer extends ViewPaneContainer<IExtensionsVi
 						'role': 'button',
 						'aria-label': status.action.label,
 					}, status.action.label));
-				this.notificationDisposables.value.add(addDisposableListener(actionButton, EventType.CLICK, () => status.action!.run()));
+				this.notificationDisposables.value.add(addDisposableListener(actionButton, EventType.CLICK, () => {
+					Promise.resolve(status.action!.run()).catch(error => this.notificationService.error(error));
+				}));
 				this.notificationDisposables.value.add(addDisposableListener(actionButton, EventType.KEY_DOWN, (e: KeyboardEvent) => {
 					const standardKeyboardEvent = new StandardKeyboardEvent(e);
 					if (standardKeyboardEvent.keyCode === KeyCode.Enter || standardKeyboardEvent.keyCode === KeyCode.Space) {
-						status.action!.run();
+						Promise.resolve(status.action!.run()).catch(error => this.notificationService.error(error));
 					}
 					standardKeyboardEvent.stopPropagation();
 				}));
