@@ -471,7 +471,6 @@ class NewChatWidget extends Disposable {
 				this._focusEditor();
 			},
 			getModels: () => this._getAvailableModels(),
-			canManageModels: () => true,
 			showCuratedModels: () => false,
 		};
 
