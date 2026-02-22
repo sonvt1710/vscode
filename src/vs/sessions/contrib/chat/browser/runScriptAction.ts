@@ -197,6 +197,7 @@ export class RunScriptContribution extends Disposable implements IWorkbenchContr
 					? localize('storeInWorkspaceSettingsDesc', "Stored in session worktree")
 					: localize('storeInWorkspaceSettingsDisabled', "Not available in empty sessions"),
 				italic: !hasWorktree,
+				enabled: hasWorktree,
 			},
 		];
 
