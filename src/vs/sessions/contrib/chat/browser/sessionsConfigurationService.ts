@@ -107,11 +107,11 @@ export class SessionsConfigurationService extends Disposable implements ISession
 	) {
 		super();
 
-		this._scripts = this._register(observableFromEvent(
+		this._scripts = observableFromEvent(
 			this,
 			this._configurationService.onDidChangeConfiguration,
 			() => this._readAllScripts(),
-		));
+		);
 	}
 
 	getScripts(_session: IActiveSessionItem): IObservable<readonly ISessionScript[]> {
