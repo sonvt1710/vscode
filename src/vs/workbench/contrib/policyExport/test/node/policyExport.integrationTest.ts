@@ -12,6 +12,7 @@ import { isWindows } from '../../../../../base/common/platform.js';
 import { dirname, join } from '../../../../../base/common/path.js';
 import { FileAccess } from '../../../../../base/common/network.js';
 import * as util from 'util';
+import { stripComments } from '../../../../../base/common/jsonc.js';
 
 const exec = util.promisify(cp.exec);
 
@@ -33,7 +34,7 @@ suite('PolicyExport Integration Tests', () => {
 		const tempFile = join(os.tmpdir(), `policyData-test-${Date.now()}.jsonc`);
 
 		function normalizeContent(content: string) {
-			const data = JSON.parse(content);
+			const data = JSON.parse(stripComments(content));
 			if (data && Array.isArray(data.policies)) {
 				data.policies.sort((a: any, b: any) => a.name.localeCompare(b.name));
 			}
