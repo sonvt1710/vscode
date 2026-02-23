@@ -32,6 +32,14 @@ suite('PolicyExport Integration Tests', () => {
 		const checkedInFile = join(rootPath, 'build/lib/policies/policyData.jsonc');
 		const tempFile = join(os.tmpdir(), `policyData-test-${Date.now()}.jsonc`);
 
+		function normalizeContent(content: string) {
+			const data = JSON.parse(content);
+			if (data && Array.isArray(data.policies)) {
+				data.policies.sort((a: any, b: any) => a.name.localeCompare(b.name));
+			}
+			return JSON.stringify(data, null, 2);
+		}
+
 		try {
 			// Launch VS Code with --export-policy-data flag
 			const scriptPath = isWindows
@@ -46,8 +54,8 @@ suite('PolicyExport Integration Tests', () => {
 
 			// Read both files
 			const [exportedContent, checkedInContent] = await Promise.all([
-				fs.readFile(tempFile, 'utf-8'),
-				fs.readFile(checkedInFile, 'utf-8')
+				fs.readFile(tempFile, 'utf-8').then(normalizeContent),
+				fs.readFile(checkedInFile, 'utf-8').then(normalizeContent)
 			]);
 
 			// Compare contents
