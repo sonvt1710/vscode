@@ -525,30 +525,30 @@ export class ChatSetupContribution extends Disposable implements IWorkbenchContr
 			when: internalGenerateCodeContext
 		});
 
-		MenuRegistry.appendMenuItem(MenuId.ChatTextEditorMenu, {
+		MenuRegistry.appendMenuItem(MenuId.EditorContext, {
 			command: {
 				id: 'chat.internal.fix',
 				title: localize('fix', "Fix"),
 			},
-			group: '1_action',
-			order: 1,
+			group: '1_chat',
+			order: 5,
 			when: ContextKeyExpr.and(
 				internalGenerateCodeContext,
 				EditorContextKeys.readOnly.negate()
 			)
 		});
 
-		MenuRegistry.appendMenuItem(MenuId.ChatTextEditorMenu, {
+		MenuRegistry.appendMenuItem(MenuId.EditorContext, {
 			command: {
 				id: 'chat.internal.review',
 				title: localize('review', "Code Review"),
 			},
-			group: '1_action',
-			order: 2,
+			group: '1_chat',
+			order: 6,
 			when: internalGenerateCodeContext
 		});
 
-		MenuRegistry.appendMenuItem(MenuId.ChatTextEditorMenu, {
+		MenuRegistry.appendMenuItem(MenuId.EditorContext, {
 			command: {
 				id: 'chat.internal.generateDocs',
 				title: localize('generateDocs', "Generate Docs"),
@@ -561,7 +561,7 @@ export class ChatSetupContribution extends Disposable implements IWorkbenchContr
 			)
 		});
 
-		MenuRegistry.appendMenuItem(MenuId.ChatTextEditorMenu, {
+		MenuRegistry.appendMenuItem(MenuId.EditorContext, {
 			command: {
 				id: 'chat.internal.generateTests',
 				title: localize('generateTests', "Generate Tests"),
