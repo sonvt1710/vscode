@@ -24,6 +24,7 @@ import { ILogService } from '../../../../../platform/log/common/log.js';
 import { IMcpServerConfiguration, IMcpStdioServerConfiguration, McpServerType } from '../../../../../platform/mcp/common/mcpPlatformTypes.js';
 import { observableConfigValue } from '../../../../../platform/observable/common/platformObservableUtils.js';
 import { IWorkspaceContextService } from '../../../../../platform/workspace/common/workspace.js';
+import { IPathService } from '../../../../services/path/common/pathService.js';
 import { ChatConfiguration } from '../constants.js';
 import { parseCopilotHooks } from '../promptSyntax/hookCompatibility.js';
 import { parseClaudeHooks } from '../promptSyntax/hookClaudeCompat.js';
@@ -42,7 +43,7 @@ interface IAgentPluginFormatAdapter {
 	readonly manifestPaths: readonly string[];
 	readonly hookConfigPaths: readonly string[];
 	readonly hookWatchPaths: readonly string[];
-	parseHooks(json: unknown, pluginUri: URI): IAgentPluginHook[];
+	parseHooks(json: unknown, pluginUri: URI, userHome: string): IAgentPluginHook[];
 }
 
 function mapParsedHooks(parsed: Map<IAgentPluginHook['type'], { hooks: IAgentPluginHook['hooks']; originalId: string }>): IAgentPluginHook[] {
@@ -54,7 +55,7 @@ const copilotPluginFormatAdapter: IAgentPluginFormatAdapter = {
 	manifestPaths: ['plugin.json'],
 	hookConfigPaths: ['hooks.json'],
 	hookWatchPaths: ['hooks.json'],
-	parseHooks: json => mapParsedHooks(parseCopilotHooks(json, undefined, '')),
+	parseHooks: (json, pluginUri, userHome) => mapParsedHooks(parseCopilotHooks(json, pluginUri, userHome)),
 };
 
 const claudePluginFormatAdapter: IAgentPluginFormatAdapter = {
@@ -62,14 +63,14 @@ const claudePluginFormatAdapter: IAgentPluginFormatAdapter = {
 	manifestPaths: ['.claude-plugin/plugin.json'],
 	hookConfigPaths: ['hooks/hooks.json'],
 	hookWatchPaths: ['hooks'],
-	parseHooks: (json, pluginUri) => {
+	parseHooks: (json, pluginUri, userHome) => {
 		const replacer = (v: unknown): unknown => {
 			return typeof v === 'string'
 				? v.replaceAll('${CLAUDE_PLUGIN_ROOT}', pluginUri.fsPath)
 				: undefined;
 		};
 
-		const { hooks, disabledAllHooks } = parseClaudeHooks(cloneAndChange(json, replacer), undefined, '');
+		const { hooks, disabledAllHooks } = parseClaudeHooks(cloneAndChange(json, replacer), pluginUri, userHome);
 		if (disabledAllHooks) {
 			return [];
 		}
@@ -148,6 +149,7 @@ export class ConfiguredAgentPluginDiscovery extends Disposable implements IAgent
 		@IConfigurationService private readonly _configurationService: IConfigurationService,
 		@IFileService private readonly _fileService: IFileService,
 		@IWorkspaceContextService private readonly _workspaceContextService: IWorkspaceContextService,
+		@IPathService private readonly _pathService: IPathService,
 		@ILogService private readonly _logService: ILogService,
 	) {
 		super();
@@ -481,10 +483,11 @@ export class ConfiguredAgentPluginDiscovery extends Disposable implements IAgent
 	}
 
 	private async _readHooks(pluginUri: URI, adapter: IAgentPluginFormatAdapter): Promise<readonly IAgentPluginHook[]> {
+		const userHome = (await this._pathService.userHome()).fsPath;
 		for (const hooksUri of adapter.hookConfigPaths.map(path => joinPath(pluginUri, path))) {
 			const json = await this._readJsonFile(hooksUri);
 			if (json) {
-				return adapter.parseHooks(json, pluginUri);
+				return adapter.parseHooks(json, pluginUri, userHome);
 			}
 		}
 
@@ -493,7 +496,7 @@ export class ConfiguredAgentPluginDiscovery extends Disposable implements IAgent
 			if (manifest && typeof manifest === 'object') {
 				const hooks = (manifest as Record<string, unknown>)['hooks'];
 				if (hooks && typeof hooks === 'object') {
-					return adapter.parseHooks({ hooks }, pluginUri);
+					return adapter.parseHooks({ hooks }, pluginUri, userHome);
 				}
 			}
 		}
