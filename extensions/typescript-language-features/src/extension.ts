@@ -25,7 +25,7 @@ import { onCaseInsensitiveFileSystem } from './utils/fs.electron';
 import { Lazy } from './utils/lazy';
 import { getPackageInfo } from './utils/packageInfo';
 import * as temp from './utils/temp.electron';
-import { conditionalRegistration, requireGlobalConfiguration, requireGlobalUnifiedConfig, requireHasVsCodeExtension } from './languageFeatures/util/dependentRegistration';
+import { conditionalRegistration, requireGlobalUnifiedConfig, requireHasVsCodeExtension } from './languageFeatures/util/dependentRegistration';
 import { DisposableStore } from './utils/dispose';
 
 export function activate(
