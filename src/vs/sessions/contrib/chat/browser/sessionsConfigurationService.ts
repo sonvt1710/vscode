@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { Disposable, MutableDisposable } from '../../../../base/common/lifecycle.js';
+import { Disposable, DisposableStore, MutableDisposable } from '../../../../base/common/lifecycle.js';
 import { IObservable, observableValue, transaction } from '../../../../base/common/observable.js';
 import { joinPath, dirname } from '../../../../base/common/resources.js';
 import { parse } from '../../../../base/common/jsonc.js';
@@ -294,14 +294,16 @@ export class SessionsConfigurationService extends Disposable implements ISession
 		}
 		this._watchedResource = tasksUri;
 
-		const watcher = this._fileService.watch(tasksUri);
-		this._fileWatcher.value = watcher;
+		const disposables = new DisposableStore();
 
-		this._register(this._fileService.onDidFilesChange(e => {
+		disposables.add(this._fileService.watch(tasksUri));
+		disposables.add(this._fileService.onDidFilesChange(e => {
 			if (e.affects(tasksUri)) {
 				this._refreshSessionTasks(worktree);
 			}
 		}));
+
+		this._fileWatcher.value = disposables;
 	}
 
 	private async _refreshSessionTasks(worktree: URI | undefined): Promise<void> {
