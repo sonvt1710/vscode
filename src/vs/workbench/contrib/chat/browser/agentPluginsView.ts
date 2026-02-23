@@ -9,7 +9,7 @@ import { IListContextMenuEvent } from '../../../../base/browser/ui/list/list.js'
 import { IPagedRenderer } from '../../../../base/browser/ui/list/listPaging.js';
 import { Action, IAction, Separator } from '../../../../base/common/actions.js';
 import { CancellationTokenSource } from '../../../../base/common/cancellation.js';
-import { Disposable, DisposableStore, IDisposable, isDisposable } from '../../../../base/common/lifecycle.js';
+import { Disposable, DisposableStore, IDisposable, isDisposable, MutableDisposable } from '../../../../base/common/lifecycle.js';
 import { autorun } from '../../../../base/common/observable.js';
 import { IPagedModel, PagedModel } from '../../../../base/common/paging.js';
 import { basename, dirname, joinPath } from '../../../../base/common/resources.js';
@@ -19,7 +19,6 @@ import { ConfigurationTarget, IConfigurationService } from '../../../../platform
 import { ContextKeyExpr, IContextKeyService, RawContextKey } from '../../../../platform/contextkey/common/contextkey.js';
 import { IContextMenuService } from '../../../../platform/contextview/browser/contextView.js';
 import { IDialogService } from '../../../../platform/dialogs/common/dialogs.js';
-import { IFileService } from '../../../../platform/files/common/files.js';
 import { IHoverService } from '../../../../platform/hover/browser/hover.js';
 import { SyncDescriptor } from '../../../../platform/instantiation/common/descriptors.js';
 import { IInstantiationService } from '../../../../platform/instantiation/common/instantiation.js';
@@ -285,6 +284,7 @@ class AgentPluginRenderer implements IPagedRenderer<IAgentPluginItem, IAgentPlug
 export class AgentPluginsListView extends AbstractExtensionsListView<IAgentPluginItem> {
 
 	private readonly actionStore = this._register(new DisposableStore());
+	private readonly queryCts = new MutableDisposable<CancellationTokenSource>();
 	private list: WorkbenchPagedList<IAgentPluginItem> | null = null;
 	private listContainer: HTMLElement | null = null;
 	private bodyTemplate: {
@@ -307,7 +307,6 @@ export class AgentPluginsListView extends AbstractExtensionsListView<IAgentPlugi
 		@IAgentPluginService private readonly agentPluginService: IAgentPluginService,
 		@IPluginMarketplaceService private readonly pluginMarketplaceService: IPluginMarketplaceService,
 		@ILabelService private readonly labelService: ILabelService,
-		@IFileService private readonly fileService: IFileService,
 	) {
 		super(options, keybindingService, contextMenuService, configurationService, contextKeyService, viewDescriptorService, instantiationService, openerService, themeService, hoverService);
 	}
@@ -375,7 +374,7 @@ export class AgentPluginsListView extends AbstractExtensionsListView<IAgentPlugi
 
 			actions.push(new Separator());
 			actions.push(this.instantiationService.createInstance(OpenPluginFolderAction, item.plugin));
-			this.addReadmeAction(actions, item.plugin.uri);
+			actions.push(this.instantiationService.createInstance(OpenPluginReadmeAction, joinPath(item.plugin.uri, 'README.md')));
 			actions.push(new Separator());
 			actions.push(this.instantiationService.createInstance(UninstallPluginAction, item.plugin));
 		} else {
@@ -393,14 +392,6 @@ export class AgentPluginsListView extends AbstractExtensionsListView<IAgentPlugi
 		}
 
 		return actions;
-	}
-
-	private addReadmeAction(actions: IAction[], pluginUri: URI): void {
-		const readmeUri = joinPath(pluginUri, 'README.md');
-		this.fileService.exists(readmeUri).then(exists => {
-			// Best effort — too late for this context menu, but will be available next time
-		});
-		actions.push(this.instantiationService.createInstance(OpenPluginReadmeAction, joinPath(pluginUri, 'README.md')));
 	}
 
 	protected override layoutBody(height: number, width: number): void {
@@ -430,7 +421,10 @@ export class AgentPluginsListView extends AbstractExtensionsListView<IAgentPlugi
 	}
 
 	private async queryMarketplace(text: string): Promise<IMarketplacePluginItem[]> {
+		this.queryCts.value?.cancel();
 		const cts = new CancellationTokenSource();
+		this.queryCts.value = cts;
+
 		try {
 			const plugins = await this.pluginMarketplaceService.fetchMarketplacePlugins(cts.token);
 			const lowerText = text.toLowerCase();
