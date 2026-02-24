@@ -1112,23 +1112,6 @@ class NewChatWidget extends Disposable {
 			() => this.commandService.executeCommand(AICustomizationManagementCommands.OpenEditor, section);
 
 		this._slashCommands.push({
-			command: 'clear',
-			detail: localize('slashCommand.clear', "Start a new chat and archive the current one"),
-			sortText: 'z2_clear',
-			executeImmediately: true,
-			execute: () => this.sessionsManagementService.openNewSession(),
-		});
-		this._slashCommands.push({
-			command: 'help',
-			detail: localize('slashCommand.help', "Show available slash commands"),
-			sortText: 'z1_help',
-			executeImmediately: true,
-			execute: () => {
-				const helpLines = this._slashCommands.map(c => `  /${c.command} — ${c.detail}`);
-				this.logService.info(`Available slash commands:\n${helpLines.join('\n')}`);
-			},
-		});
-		this._slashCommands.push({
 			command: 'agents',
 			detail: localize('slashCommand.agents', "View and manage custom agents"),
 			sortText: 'z3_agents',
