@@ -1125,46 +1125,6 @@ class NewChatWidget extends Disposable {
 			},
 		});
 		this._slashCommands.push({
-			command: 'fork',
-			detail: localize('slashCommand.fork', "Fork conversation into a new chat session"),
-			sortText: 'z2_fork',
-			executeImmediately: true,
-			execute: () => this.commandService.executeCommand('workbench.action.chat.forkConversation', this._pendingSessionResource),
-		});
-		this._slashCommands.push({
-			command: 'rename',
-			detail: localize('slashCommand.rename', "Rename this chat"),
-			sortText: 'z2_rename',
-			executeImmediately: false,
-			execute: (args) => {
-				const title = args.trim();
-				if (title && this._pendingSessionResource) {
-					this.commandService.executeCommand('workbench.action.chat.renameSession', this._pendingSessionResource, title);
-				}
-			},
-		});
-		this._slashCommands.push({
-			command: 'agents',
-			detail: localize('slashCommand.agents', "Configure custom agents"),
-			sortText: 'z3_agents',
-			executeImmediately: true,
-			execute: () => this.commandService.executeCommand('workbench.action.chat.openModePicker'),
-		});
-		this._slashCommands.push({
-			command: 'models',
-			detail: localize('slashCommand.models', "Open the model picker"),
-			sortText: 'z3_models',
-			executeImmediately: true,
-			execute: () => this.commandService.executeCommand('workbench.action.chat.openModelPicker'),
-		});
-		this._slashCommands.push({
-			command: 'tools',
-			detail: localize('slashCommand.tools', "Configure tools"),
-			sortText: 'z3_tools',
-			executeImmediately: true,
-			execute: () => this.commandService.executeCommand('workbench.action.chat.configureTools'),
-		});
-		this._slashCommands.push({
 			command: 'hooks',
 			detail: localize('slashCommand.hooks', "Configure hooks"),
 			sortText: 'z3_hooks',
