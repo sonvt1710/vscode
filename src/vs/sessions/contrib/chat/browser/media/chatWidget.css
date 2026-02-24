@@ -28,7 +28,7 @@
 	border: 1px solid var(--vscode-input-border, var(--vscode-contrastBorder, transparent));
 	border-radius: 8px;
 	background-color: var(--vscode-input-background);
-	overflow: hidden;
+	overflow: visible;
 	display: flex;
 	flex-direction: column;
 }

@@ -424,6 +424,13 @@ class NewChatWidget extends Disposable {
 			wrappingStrategy: 'advanced',
 			stickyScroll: { enabled: false },
 			renderWhitespace: 'none',
+			suggest: {
+				showIcons: true,
+				showSnippets: false,
+				showWords: true,
+				showStatusBar: false,
+				insertMode: 'insert',
+			},
 		};
 
 		const widgetOptions: ICodeEditorWidgetOptions = {
@@ -439,6 +446,9 @@ class NewChatWidget extends Disposable {
 			CodeEditorWidget, editorContainer, editorOptions, widgetOptions,
 		));
 		this._editor.setModel(textModel);
+
+		// Ensure suggest widget renders above the input (not clipped by container)
+		SuggestController.get(this._editor)?.forceRenderingAbove();
 
 		this._register(this._editor.onKeyDown(e => {
 			if (e.keyCode === KeyCode.Enter && !e.shiftKey && !e.ctrlKey && !e.altKey) {
