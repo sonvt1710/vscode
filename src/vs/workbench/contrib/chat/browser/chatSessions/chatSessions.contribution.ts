@@ -1037,18 +1037,23 @@ export class ChatSessionsService extends Disposable implements IChatSessionsServ
 			throw Error(`Can not find provider for ${sessionResource}`);
 		}
 
+		let session: IChatSession;
 		if (sessionResource.path.startsWith('/untitled')) {
 			const newSessionOptions = this.getNewSessionOptionsForSessionType(resolvedType);
-			return {
+			session = {
 				sessionResource: sessionResource,
 				onWillDispose: Event.None,
 				history: [],
 				options: newSessionOptions ?? {},
 				dispose: () => { }
 			};
-		}
 
-		const session = await raceCancellationError(provider.provideChatSessionContent(sessionResource, token), token);
+			for (const [optionId, value] of Object.entries(newSessionOptions ?? {})) {
+				this.setSessionOption(sessionResource, optionId, value);
+			}
+		} else {
+			session = await raceCancellationError(provider.provideChatSessionContent(sessionResource, token), token);
+		}
 
 		// Make sure another session wasn't created while we were awaiting the provider
 		{
