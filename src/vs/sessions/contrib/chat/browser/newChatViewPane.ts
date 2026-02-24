@@ -1316,7 +1316,7 @@ class NewChatWidget extends Disposable {
 						const withSlash = `/${c.command}`;
 						return {
 							label: withSlash,
-							insertText: c.executeImmediately ? '' : `${withSlash} `,
+							insertText: `${withSlash} `,
 							detail: c.detail,
 							range,
 							sortText: c.sortText ?? 'a'.repeat(i + 1),
