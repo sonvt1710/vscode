@@ -36,6 +36,7 @@ import { SnippetController2 } from '../../../../editor/contrib/snippet/browser/s
 import { IConfigurationService } from '../../../../platform/configuration/common/configuration.js';
 import { IContextKeyService, IContextKey, RawContextKey, ContextKeyExpr } from '../../../../platform/contextkey/common/contextkey.js';
 import { IContextMenuService } from '../../../../platform/contextview/browser/contextView.js';
+import { ICommandService } from '../../../../platform/commands/common/commands.js';
 import { IInstantiationService } from '../../../../platform/instantiation/common/instantiation.js';
 import { IKeybindingService } from '../../../../platform/keybinding/common/keybinding.js';
 import { ILogService } from '../../../../platform/log/common/log.js';
@@ -85,6 +86,8 @@ interface ISessionsSlashCommandData {
 	readonly sortText?: string;
 	/** Whether the command should execute as soon as it is entered. */
 	readonly executeImmediately?: boolean;
+	/** Callback to execute when the command is invoked. */
+	readonly execute: (args: string) => void;
 }
 
 // #endregion
@@ -269,6 +272,7 @@ class NewChatWidget extends Disposable {
 		@ILanguageFeaturesService private readonly languageFeaturesService: ILanguageFeaturesService,
 		@ICodeEditorService private readonly codeEditorService: ICodeEditorService,
 		@IThemeService private readonly themeService: IThemeService,
+		@ICommandService private readonly commandService: ICommandService,
 	) {
 		super();
 		this._contextAttachments = this._register(this.instantiationService.createInstance(NewChatContextAttachments));
@@ -1114,12 +1118,73 @@ class NewChatWidget extends Disposable {
 			detail: localize('slashCommand.clear', "Start a new chat"),
 			sortText: 'z2_clear',
 			executeImmediately: true,
+			execute: () => this.sessionsManagementService.openNewSession(),
 		});
 		this._slashCommands.push({
 			command: 'help',
 			detail: localize('slashCommand.help', "Show available slash commands"),
 			sortText: 'z1_help',
 			executeImmediately: true,
+			execute: () => {
+				const helpLines = this._slashCommands.map(c => `  /${c.command} — ${c.detail}`);
+				this.logService.info(`Available slash commands:\n${helpLines.join('\n')}`);
+			},
+		});
+		this._slashCommands.push({
+			command: 'models',
+			detail: localize('slashCommand.models', "Open the model picker"),
+			sortText: 'z3_models',
+			executeImmediately: true,
+			execute: () => this.commandService.executeCommand('workbench.action.chat.openModelPicker'),
+		});
+		this._slashCommands.push({
+			command: 'agents',
+			detail: localize('slashCommand.agents', "Configure custom agents"),
+			sortText: 'z3_agents',
+			executeImmediately: true,
+			execute: () => this.commandService.executeCommand('workbench.action.chat.openModePicker'),
+		});
+		this._slashCommands.push({
+			command: 'tools',
+			detail: localize('slashCommand.tools', "Configure tools"),
+			sortText: 'z3_tools',
+			executeImmediately: true,
+			execute: () => this.commandService.executeCommand('workbench.action.chat.configureTools'),
+		});
+		this._slashCommands.push({
+			command: 'skills',
+			detail: localize('slashCommand.skills', "Configure skills"),
+			sortText: 'z3_skills',
+			executeImmediately: true,
+			execute: () => this.commandService.executeCommand('workbench.action.chat.configure.skills'),
+		});
+		this._slashCommands.push({
+			command: 'instructions',
+			detail: localize('slashCommand.instructions', "Configure instructions"),
+			sortText: 'z3_instructions',
+			executeImmediately: true,
+			execute: () => this.commandService.executeCommand('workbench.action.chat.configure.instructions'),
+		});
+		this._slashCommands.push({
+			command: 'prompts',
+			detail: localize('slashCommand.prompts', "Configure prompt files"),
+			sortText: 'z3_prompts',
+			executeImmediately: true,
+			execute: () => this.commandService.executeCommand('workbench.action.chat.configure.prompts'),
+		});
+		this._slashCommands.push({
+			command: 'hooks',
+			detail: localize('slashCommand.hooks', "Configure hooks"),
+			sortText: 'z3_hooks',
+			executeImmediately: true,
+			execute: () => this.commandService.executeCommand('workbench.action.chat.configure.hooks'),
+		});
+		this._slashCommands.push({
+			command: 'debug',
+			detail: localize('slashCommand.debug', "Show Chat Debug View"),
+			sortText: 'z3_debug',
+			executeImmediately: true,
+			execute: () => this.commandService.executeCommand('github.copilot.debug.showChatLogView'),
 		});
 	}
 
@@ -1196,7 +1261,7 @@ class NewChatWidget extends Disposable {
 	 * Returns `true` if a command was handled.
 	 */
 	private _tryExecuteSlashCommand(query: string): boolean {
-		const match = query.match(/^\/(\w+)\s*/);
+		const match = query.match(/^\/(\w+)\s*(.*)/s);
 		if (!match) {
 			return false;
 		}
@@ -1207,55 +1272,37 @@ class NewChatWidget extends Disposable {
 			return false;
 		}
 
-		switch (slashCommand.command) {
-			case 'clear':
-				this.sessionsManagementService.openNewSession();
-				return true;
-			case 'help': {
-				const helpLines = this._slashCommands.map(c => `  /${c.command} — ${c.detail}`);
-				this.logService.info(`Available slash commands:\n${helpLines.join('\n')}`);
-				return true;
-			}
-			default:
-				return false;
-		}
+		slashCommand.execute(match[2]?.trim() ?? '');
+		return true;
 	}
 
 	private _registerSlashCommandCompletions(): void {
 		const uri = this._editor.getModel()?.uri;
 		if (!uri) {
-			this.logService.warn('[SlashCommands] No editor model URI, skipping completion registration');
 			return;
 		}
-
-		this.logService.info(`[SlashCommands] Registering completion provider for scheme="${uri.scheme}", uri="${uri.toString()}", commands=${this._slashCommands.length}`);
 
 		this._register(this.languageFeaturesService.completionProvider.register({ scheme: uri.scheme, hasAccessToAllModels: true }, {
 			_debugDisplayName: 'sessionsSlashCommands',
 			triggerCharacters: ['/'],
 			provideCompletionItems: (model: ITextModel, position: Position, _context: CompletionContext, _token: CancellationToken) => {
-				this.logService.info(`[SlashCommands] provideCompletionItems called, model.uri="${model.uri.toString()}", position=${position.lineNumber}:${position.column}`);
-
 				const range = this._computeCompletionRanges(model, position, /\/\w*/g);
 				if (!range) {
-					this.logService.info('[SlashCommands] No completion range found');
 					return null;
 				}
 
 				// Only allow slash commands at the start of input
 				const textBefore = model.getValueInRange(new Range(1, 1, range.replace.startLineNumber, range.replace.startColumn));
 				if (textBefore.trim() !== '') {
-					this.logService.info(`[SlashCommands] Text before slash command: "${textBefore}", skipping`);
 					return null;
 				}
 
-				this.logService.info(`[SlashCommands] Returning ${this._slashCommands.length} suggestions`);
 				return {
 					suggestions: this._slashCommands.map((c, i): CompletionItem => {
 						const withSlash = `/${c.command}`;
 						return {
 							label: withSlash,
-							insertText: c.executeImmediately ? `${withSlash} ` : `${withSlash} `,
+							insertText: `${withSlash} `,
 							detail: c.detail,
 							range,
 							sortText: c.sortText ?? 'a'.repeat(i + 1),
