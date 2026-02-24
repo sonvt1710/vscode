@@ -29,7 +29,7 @@
 		"dropdown.background": "#191A1B",
 		"dropdown.border": "#333536",
 		"dropdown.foreground": "#bfbfbf",
-		"dropdown.listBackground": "#202122",
+		"dropdown.listBackground": "#191A1B",
 		"input.background": "#191A1B",
 		"input.border": "#333536FF",
 		"input.foreground": "#bfbfbf",
