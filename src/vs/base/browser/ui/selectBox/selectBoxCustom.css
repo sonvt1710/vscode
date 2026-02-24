@@ -6,7 +6,7 @@
 .monaco-select-box-dropdown-container {
 	display: none;
 	box-sizing: border-box;
-	border-radius: var(--vscode-cornerRadius-large);
+	border-radius: var(--vscode-cornerRadius-small);
 	box-shadow: 0 2px 8px var(--vscode-widget-shadow);
 }
 
@@ -100,7 +100,7 @@
 }
 
 .monaco-select-box-dropdown-container > .select-box-dropdown-container-width-control > .width-control-div > .option-text-width-control {
-	padding-left: 4px;
+	padding-left: 8px;
 	padding-right: 8px;
 	white-space: nowrap;
 }
