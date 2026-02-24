@@ -50,7 +50,6 @@ import { isEqual } from '../../../../base/common/resources.js';
 import { localize } from '../../../../nls.js';
 import { AgentSessionProviders } from '../../../../workbench/contrib/chat/browser/agentSessions/agentSessions.js';
 import { chatSlashCommandBackground, chatSlashCommandForeground } from '../../../../workbench/contrib/chat/common/widget/chatColors.js';
-import { IPromptsService } from '../../../../workbench/contrib/chat/common/promptSyntax/service/promptsService.js';
 import { ISessionsManagementService } from '../../sessions/browser/sessionsManagementService.js';
 import { ChatSessionPosition, getResourceForNewChatSession } from '../../../../workbench/contrib/chat/browser/chatSessions/chatSessions.contribution.js';
 import { ChatSessionPickerActionItem, IChatSessionPickerDelegate } from '../../../../workbench/contrib/chat/browser/chatSessions/chatSessionPickerActionItem.js';
@@ -268,7 +267,6 @@ class NewChatWidget extends Disposable {
 		@ICodeEditorService private readonly codeEditorService: ICodeEditorService,
 		@IThemeService private readonly themeService: IThemeService,
 		@ICommandService private readonly commandService: ICommandService,
-		@IPromptsService private readonly promptsService: IPromptsService,
 	) {
 		super();
 		this._contextAttachments = this._register(this.instantiationService.createInstance(NewChatContextAttachments));
@@ -1297,7 +1295,7 @@ class NewChatWidget extends Disposable {
 			return;
 		}
 
-		// Core slash commands (registered via IChatSlashCommandService)
+		// Built-in slash commands
 		this._register(this.languageFeaturesService.completionProvider.register({ scheme: uri.scheme, hasAccessToAllModels: true }, {
 			_debugDisplayName: 'sessionsSlashCommands',
 			triggerCharacters: ['/'],
@@ -1322,42 +1320,6 @@ class NewChatWidget extends Disposable {
 							detail: c.detail,
 							range,
 							sortText: c.sortText ?? 'a'.repeat(i + 1),
-							kind: CompletionItemKind.Text,
-						};
-					})
-				};
-			}
-		}));
-
-		// Prompt slash commands (registered via IPromptsService)
-		this._register(this.languageFeaturesService.completionProvider.register({ scheme: uri.scheme, hasAccessToAllModels: true }, {
-			_debugDisplayName: 'sessionsPromptSlashCommands',
-			triggerCharacters: ['/'],
-			provideCompletionItems: async (model: ITextModel, position: Position, _context: CompletionContext, token: CancellationToken) => {
-				const range = this._computeCompletionRanges(model, position, /\/\w*/g);
-				if (!range) {
-					return null;
-				}
-
-				const textBefore = model.getValueInRange(new Range(1, 1, range.replace.startLineNumber, range.replace.startColumn));
-				if (textBefore.trim() !== '') {
-					return null;
-				}
-
-				const promptCommands = await this.promptsService.getPromptSlashCommands(token);
-				if (!promptCommands || token.isCancellationRequested) {
-					return null;
-				}
-
-				return {
-					suggestions: promptCommands.map((c, i): CompletionItem => {
-						const withSlash = `/${c.name}`;
-						return {
-							label: withSlash,
-							insertText: `${withSlash} `,
-							detail: c.description,
-							range,
-							sortText: c.name,
 							kind: CompletionItemKind.Text,
 						};
 					})
