@@ -1152,13 +1152,6 @@ class NewChatWidget extends Disposable {
 			executeImmediately: true,
 			execute: () => this.commandService.executeCommand('workbench.action.chat.configure.prompts'),
 		});
-		this._slashCommands.push({
-			command: 'debug',
-			detail: localize('slashCommand.debug', "Show Chat Debug View"),
-			sortText: 'z3_debug',
-			executeImmediately: true,
-			execute: () => this.commandService.executeCommand('github.copilot.debug.showChatLogView'),
-		});
 	}
 
 	private static readonly _slashDecoType = 'sessions-slash-command';
