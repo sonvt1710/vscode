@@ -1138,7 +1138,7 @@ class NewChatWidget extends Disposable {
 			return;
 		}
 
-		this._register(this.languageFeaturesService.completionProvider.register({ scheme: uri.scheme }, {
+		this._register(this.languageFeaturesService.completionProvider.register({ scheme: uri.scheme, hasAccessToAllModels: true }, {
 			_debugDisplayName: 'sessionsSlashCommands',
 			triggerCharacters: ['/'],
 			provideCompletionItems: (model: ITextModel, position: Position, _context: CompletionContext, _token: CancellationToken) => {
