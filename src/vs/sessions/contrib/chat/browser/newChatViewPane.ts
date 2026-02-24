@@ -21,6 +21,15 @@ import { CodeEditorWidget, ICodeEditorWidgetOptions } from '../../../../editor/b
 import { EditorExtensionsRegistry } from '../../../../editor/browser/editorExtensions.js';
 import { IEditorConstructionOptions } from '../../../../editor/browser/config/editorConfiguration.js';
 import { IModelService } from '../../../../editor/common/services/model.js';
+import { ILanguageFeaturesService } from '../../../../editor/common/services/languageFeatures.js';
+import { CompletionContext, CompletionItem, CompletionItemKind } from '../../../../editor/common/languages.js';
+import { ITextModel } from '../../../../editor/common/model.js';
+import { Position } from '../../../../editor/common/core/position.js';
+import { Range } from '../../../../editor/common/core/range.js';
+import { getWordAtText } from '../../../../editor/common/core/wordHelper.js';
+import { CancellationToken } from '../../../../base/common/cancellation.js';
+import { SuggestController } from '../../../../editor/contrib/suggest/browser/suggestController.js';
+import { SnippetController2 } from '../../../../editor/contrib/snippet/browser/snippetController2.js';
 import { IConfigurationService } from '../../../../platform/configuration/common/configuration.js';
 import { IContextKeyService, IContextKey, RawContextKey, ContextKeyExpr } from '../../../../platform/contextkey/common/contextkey.js';
 import { IContextMenuService } from '../../../../platform/contextview/browser/contextView.js';
@@ -57,6 +66,23 @@ import { isString } from '../../../../base/common/types.js';
 import { NewChatContextAttachments } from './newChatContextAttachments.js';
 import { GITHUB_REMOTE_FILE_SCHEME } from '../../fileTreeView/browser/githubFileSystemProvider.js';
 import { FolderPicker } from './folderPicker.js';
+
+// #region --- Slash Command Data ---
+
+/**
+ * Minimal slash command descriptor for the sessions new-chat widget.
+ * Self-contained copy of the essential fields from core's `IChatSlashData`
+ * to avoid a direct dependency on the workbench chat slash command service.
+ */
+interface ISessionsSlashCommandData {
+	readonly command: string;
+	readonly detail: string;
+	readonly sortText?: string;
+	/** Whether the command should execute as soon as it is entered. */
+	readonly executeImmediately?: boolean;
+}
+
+// #endregion
 
 // #region --- Target Config ---
 
@@ -219,6 +245,9 @@ class NewChatWidget extends Disposable {
 	// Attached context
 	private readonly _contextAttachments: NewChatContextAttachments;
 
+	// Slash commands
+	private readonly _slashCommands: ISessionsSlashCommandData[] = [];
+
 	constructor(
 		options: INewChatWidgetOptions,
 		@IInstantiationService private readonly instantiationService: IInstantiationService,
@@ -232,6 +261,7 @@ class NewChatWidget extends Disposable {
 		@IHoverService _hoverService: IHoverService,
 		@IWorkspaceContextService private readonly workspaceContextService: IWorkspaceContextService,
 		@ISessionsManagementService private readonly sessionsManagementService: ISessionsManagementService,
+		@ILanguageFeaturesService private readonly languageFeaturesService: ILanguageFeaturesService,
 	) {
 		super();
 		this._contextAttachments = this._register(this.instantiationService.createInstance(NewChatContextAttachments));
@@ -281,6 +311,9 @@ class NewChatWidget extends Disposable {
 				this._renderExtensionPickers(true);
 			}
 		}));
+
+		// Register slash commands
+		this._registerSlashCommands();
 	}
 
 	// --- Rendering ---
@@ -397,6 +430,8 @@ class NewChatWidget extends Disposable {
 			isSimpleWidget: true,
 			contributions: EditorExtensionsRegistry.getSomeEditorContributions([
 				ContextMenuController.ID,
+				SuggestController.ID,
+				SnippetController2.ID,
 			]),
 		};
 
@@ -416,6 +451,9 @@ class NewChatWidget extends Disposable {
 		this._register(this._editor.onDidContentSizeChange(() => {
 			this._editor.layout();
 		}));
+
+		// Register slash command completions for this editor
+		this._registerSlashCommandCompletions();
 	}
 
 	private _createAttachButton(container: HTMLElement): void {
@@ -988,6 +1026,12 @@ class NewChatWidget extends Disposable {
 			return;
 		}
 
+		// Check for slash commands first
+		if (this._tryExecuteSlashCommand(query)) {
+			this._editor.getModel()?.setValue('');
+			return;
+		}
+
 		const target = this._getEffectiveTarget();
 		if (!target) {
 			this.logService.warn('ChatWelcomeWidget: No target selected, cannot create session');
@@ -1029,6 +1073,120 @@ class NewChatWidget extends Disposable {
 		});
 
 		this._contextAttachments.clear();
+	}
+
+	// --- Slash commands ---
+
+	private _registerSlashCommands(): void {
+		this._slashCommands.push({
+			command: 'clear',
+			detail: localize('slashCommand.clear', "Start a new chat"),
+			sortText: 'z2_clear',
+			executeImmediately: true,
+		});
+		this._slashCommands.push({
+			command: 'help',
+			detail: localize('slashCommand.help', "Show available slash commands"),
+			sortText: 'z1_help',
+			executeImmediately: true,
+		});
+	}
+
+	/**
+	 * Attempts to parse and execute a slash command from the input.
+	 * Returns `true` if a command was handled.
+	 */
+	private _tryExecuteSlashCommand(query: string): boolean {
+		const match = query.match(/^\/(\w+)\s*/);
+		if (!match) {
+			return false;
+		}
+
+		const commandName = match[1];
+		const slashCommand = this._slashCommands.find(c => c.command === commandName);
+		if (!slashCommand) {
+			return false;
+		}
+
+		switch (slashCommand.command) {
+			case 'clear':
+				this.sessionsManagementService.openNewSession();
+				return true;
+			case 'help': {
+				const helpLines = this._slashCommands.map(c => `  /${c.command} — ${c.detail}`);
+				this.logService.info(`Available slash commands:\n${helpLines.join('\n')}`);
+				return true;
+			}
+			default:
+				return false;
+		}
+	}
+
+	private _registerSlashCommandCompletions(): void {
+		const uri = this._editor.getModel()?.uri;
+		if (!uri) {
+			return;
+		}
+
+		this._register(this.languageFeaturesService.completionProvider.register({ pattern: `**/${uri.path}`, scheme: uri.scheme }, {
+			_debugDisplayName: 'sessionsSlashCommands',
+			triggerCharacters: ['/'],
+			provideCompletionItems: (model: ITextModel, position: Position, _context: CompletionContext, _token: CancellationToken) => {
+				const range = this._computeCompletionRanges(model, position, /\/\w*/g);
+				if (!range) {
+					return null;
+				}
+
+				// Only allow slash commands at the start of input
+				const textBefore = model.getValueInRange(new Range(1, 1, range.replace.startLineNumber, range.replace.startColumn));
+				if (textBefore.trim() !== '') {
+					return null;
+				}
+
+				return {
+					suggestions: this._slashCommands.map((c, i): CompletionItem => {
+						const withSlash = `/${c.command}`;
+						return {
+							label: withSlash,
+							insertText: c.executeImmediately ? `${withSlash} ` : `${withSlash} `,
+							detail: c.detail,
+							range,
+							sortText: c.sortText ?? 'a'.repeat(i + 1),
+							kind: CompletionItemKind.Text,
+						};
+					})
+				};
+			}
+		}));
+	}
+
+	/**
+	 * Compute insert and replace ranges for completion at the given position.
+	 * Minimal copy of the helper from chatInputCompletions.
+	 */
+	private _computeCompletionRanges(model: ITextModel, position: Position, reg: RegExp): { insert: Range; replace: Range } | undefined {
+		const varWord = getWordAtText(position.column, reg, model.getLineContent(position.lineNumber), 0);
+		if (!varWord && model.getWordUntilPosition(position).word) {
+			return;
+		}
+
+		if (!varWord && position.column > 1) {
+			const textBefore = model.getValueInRange(new Range(position.lineNumber, position.column - 1, position.lineNumber, position.column));
+			if (textBefore !== ' ') {
+				return;
+			}
+		}
+
+		let insert: Range;
+		let replace: Range;
+		if (!varWord) {
+			insert = replace = Range.fromPositions(position);
+		} else {
+			insert = new Range(position.lineNumber, varWord.startColumn, position.lineNumber, position.column);
+			replace = new Range(position.lineNumber, varWord.startColumn, position.lineNumber, varWord.endColumn);
+		}
+
+		return { insert, replace };
 	}
 
 	// --- Layout ---
