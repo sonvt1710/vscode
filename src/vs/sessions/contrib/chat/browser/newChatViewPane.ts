@@ -1135,24 +1135,32 @@ class NewChatWidget extends Disposable {
 	private _registerSlashCommandCompletions(): void {
 		const uri = this._editor.getModel()?.uri;
 		if (!uri) {
+			this.logService.warn('[SlashCommands] No editor model URI, skipping completion registration');
 			return;
 		}
+
+		this.logService.info(`[SlashCommands] Registering completion provider for scheme="${uri.scheme}", uri="${uri.toString()}", commands=${this._slashCommands.length}`);
 
 		this._register(this.languageFeaturesService.completionProvider.register({ scheme: uri.scheme, hasAccessToAllModels: true }, {
 			_debugDisplayName: 'sessionsSlashCommands',
 			triggerCharacters: ['/'],
 			provideCompletionItems: (model: ITextModel, position: Position, _context: CompletionContext, _token: CancellationToken) => {
+				this.logService.info(`[SlashCommands] provideCompletionItems called, model.uri="${model.uri.toString()}", position=${position.lineNumber}:${position.column}`);
+
 				const range = this._computeCompletionRanges(model, position, /\/\w*/g);
 				if (!range) {
+					this.logService.info('[SlashCommands] No completion range found');
 					return null;
 				}
 
 				// Only allow slash commands at the start of input
 				const textBefore = model.getValueInRange(new Range(1, 1, range.replace.startLineNumber, range.replace.startColumn));
 				if (textBefore.trim() !== '') {
+					this.logService.info(`[SlashCommands] Text before slash command: "${textBefore}", skipping`);
 					return null;
 				}
 
+				this.logService.info(`[SlashCommands] Returning ${this._slashCommands.length} suggestions`);
 				return {
 					suggestions: this._slashCommands.map((c, i): CompletionItem => {
 						const withSlash = `/${c.command}`;
