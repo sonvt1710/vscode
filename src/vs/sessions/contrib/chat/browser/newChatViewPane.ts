@@ -437,7 +437,7 @@ class NewChatWidget extends Disposable {
 			renderWhitespace: 'none',
 			overflowWidgetsDomNode,
 			suggest: {
-				showIcons: true,
+				showIcons: false,
 				showSnippets: false,
 				showWords: true,
 				showStatusBar: false,
