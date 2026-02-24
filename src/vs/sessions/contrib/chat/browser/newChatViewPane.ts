@@ -22,12 +22,15 @@ import { EditorExtensionsRegistry } from '../../../../editor/browser/editorExten
 import { IEditorConstructionOptions } from '../../../../editor/browser/config/editorConfiguration.js';
 import { IModelService } from '../../../../editor/common/services/model.js';
 import { ILanguageFeaturesService } from '../../../../editor/common/services/languageFeatures.js';
+import { ICodeEditorService } from '../../../../editor/browser/services/codeEditorService.js';
 import { CompletionContext, CompletionItem, CompletionItemKind } from '../../../../editor/common/languages.js';
 import { ITextModel } from '../../../../editor/common/model.js';
+import { IDecorationOptions } from '../../../../editor/common/editorCommon.js';
 import { Position } from '../../../../editor/common/core/position.js';
 import { Range } from '../../../../editor/common/core/range.js';
 import { getWordAtText } from '../../../../editor/common/core/wordHelper.js';
 import { CancellationToken } from '../../../../base/common/cancellation.js';
+import { themeColorFromId } from '../../../../base/common/themables.js';
 import { SuggestController } from '../../../../editor/contrib/suggest/browser/suggestController.js';
 import { SnippetController2 } from '../../../../editor/contrib/snippet/browser/snippetController2.js';
 import { IConfigurationService } from '../../../../platform/configuration/common/configuration.js';
@@ -38,12 +41,14 @@ import { IKeybindingService } from '../../../../platform/keybinding/common/keybi
 import { ILogService } from '../../../../platform/log/common/log.js';
 import { IOpenerService } from '../../../../platform/opener/common/opener.js';
 import { IThemeService } from '../../../../platform/theme/common/themeService.js';
+import { inputPlaceholderForeground } from '../../../../platform/theme/common/colorRegistry.js';
 import { IHoverService } from '../../../../platform/hover/browser/hover.js';
 import { HoverPosition } from '../../../../base/browser/ui/hover/hoverWidget.js';
 import { renderIcon } from '../../../../base/browser/ui/iconLabel/iconLabels.js';
 import { isEqual } from '../../../../base/common/resources.js';
 import { localize } from '../../../../nls.js';
 import { AgentSessionProviders } from '../../../../workbench/contrib/chat/browser/agentSessions/agentSessions.js';
+import { chatSlashCommandBackground, chatSlashCommandForeground } from '../../../../workbench/contrib/chat/common/widget/chatColors.js';
 import { ISessionsManagementService } from '../../sessions/browser/sessionsManagementService.js';
 import { ChatSessionPosition, getResourceForNewChatSession } from '../../../../workbench/contrib/chat/browser/chatSessions/chatSessions.contribution.js';
 import { ChatSessionPickerActionItem, IChatSessionPickerDelegate } from '../../../../workbench/contrib/chat/browser/chatSessions/chatSessionPickerActionItem.js';
@@ -262,6 +267,8 @@ class NewChatWidget extends Disposable {
 		@IWorkspaceContextService private readonly workspaceContextService: IWorkspaceContextService,
 		@ISessionsManagementService private readonly sessionsManagementService: ISessionsManagementService,
 		@ILanguageFeaturesService private readonly languageFeaturesService: ILanguageFeaturesService,
+		@ICodeEditorService private readonly codeEditorService: ICodeEditorService,
+		@IThemeService private readonly themeService: IThemeService,
 	) {
 		super();
 		this._contextAttachments = this._register(this.instantiationService.createInstance(NewChatContextAttachments));
@@ -471,6 +478,9 @@ class NewChatWidget extends Disposable {
 
 		// Register slash command completions for this editor
 		this._registerSlashCommandCompletions();
+
+		// Register slash command decorations (blue highlight + placeholder)
+		this._registerSlashCommandDecorations();
 	}
 
 	private _createAttachButton(container: HTMLElement): void {
@@ -1107,6 +1117,74 @@ class NewChatWidget extends Disposable {
 			sortText: 'z1_help',
 			executeImmediately: true,
 		});
+	}
+
+	private static readonly _slashDecoType = 'sessions-slash-command';
+	private static readonly _slashPlaceholderDecoType = 'sessions-slash-placeholder';
+	private _slashDecosRegistered = false;
+
+	private _registerSlashCommandDecorations(): void {
+		if (!this._slashDecosRegistered) {
+			this._slashDecosRegistered = true;
+			this._register(this.codeEditorService.registerDecorationType('sessions-chat', NewChatWidget._slashDecoType, {
+				color: themeColorFromId(chatSlashCommandForeground),
+				backgroundColor: themeColorFromId(chatSlashCommandBackground),
+				borderRadius: '3px',
+			}));
+			this._register(this.codeEditorService.registerDecorationType('sessions-chat', NewChatWidget._slashPlaceholderDecoType, {}));
+		}
+
+		this._register(this._editor.onDidChangeModelContent(() => this._updateSlashCommandDecorations()));
+		this._updateSlashCommandDecorations();
+	}
+
+	private _updateSlashCommandDecorations(): void {
+		const value = this._editor.getValue();
+		const match = value.match(/^\/(\w+)\s?/);
+
+		if (!match) {
+			this._editor.setDecorationsByType('sessions-chat', NewChatWidget._slashDecoType, []);
+			this._editor.setDecorationsByType('sessions-chat', NewChatWidget._slashPlaceholderDecoType, []);
+			return;
+		}
+
+		const commandName = match[1];
+		const slashCommand = this._slashCommands.find(c => c.command === commandName);
+		if (!slashCommand) {
+			this._editor.setDecorationsByType('sessions-chat', NewChatWidget._slashDecoType, []);
+			this._editor.setDecorationsByType('sessions-chat', NewChatWidget._slashPlaceholderDecoType, []);
+			return;
+		}
+
+		// Highlight the slash command text in blue
+		const commandEnd = match[0].trimEnd().length;
+		const commandDeco: IDecorationOptions[] = [{
+			range: { startLineNumber: 1, startColumn: 1, endLineNumber: 1, endColumn: commandEnd + 1 },
+		}];
+		this._editor.setDecorationsByType('sessions-chat', NewChatWidget._slashDecoType, commandDeco);
+
+		// Show the command description as a placeholder after the command
+		const restOfInput = value.slice(match[0].length).trim();
+		if (!restOfInput && slashCommand.detail) {
+			const placeholderCol = match[0].length + 1;
+			const placeholderDeco: IDecorationOptions[] = [{
+				range: { startLineNumber: 1, startColumn: placeholderCol, endLineNumber: 1, endColumn: 1000 },
+				renderOptions: {
+					after: {
+						contentText: slashCommand.detail,
+						color: this._getPlaceholderColor(),
+					}
+				}
+			}];
+			this._editor.setDecorationsByType('sessions-chat', NewChatWidget._slashPlaceholderDecoType, placeholderDeco);
+		} else {
+			this._editor.setDecorationsByType('sessions-chat', NewChatWidget._slashPlaceholderDecoType, []);
+		}
+	}
+
+	private _getPlaceholderColor(): string | undefined {
+		const theme = this.themeService.getColorTheme();
+		return theme.getColor(inputPlaceholderForeground)?.toString();
 	}
 
 	/**
