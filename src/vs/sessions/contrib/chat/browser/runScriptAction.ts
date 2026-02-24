@@ -28,7 +28,19 @@ const RUN_SCRIPT_ACTION_ID = 'workbench.action.agentSessions.runScript';
 const CONFIGURE_DEFAULT_RUN_ACTION_ID = 'workbench.action.agentSessions.configureDefaultRunAction';
 
 function getTaskDisplayLabel(task: ITaskEntry): string {
-	return task.label || (task['script'] as string | undefined) || (task['task'] as string | undefined) || '';
+	if (task.label && task.label.length > 0) {
+		return task.label;
+	}
+	if (task.script && task.script.length > 0) {
+		return task.script;
+	}
+	if (task.command && task.command.length > 0) {
+		return task.command;
+	}
+	if (task.task && task.task.toString().length > 0) {
+		return task.task.toString();
+	}
+	return '';
 }
 
 interface IRunScriptActionContext {
@@ -88,8 +100,7 @@ export class RunScriptContribution extends Disposable implements IWorkbenchContr
 			}
 
 			const { tasks, session, lastRunTaskLabel } = activeState;
-			const configureScriptPrecondition = session.worktree ? ContextKeyExpr.true() : ContextKeyExpr.false();
-			const addRunActionDisabledTooltip = session.worktree ? undefined : localize('configureScriptTooltipDisabled', "Actions can not be added in empty sessions");
+			const configureScriptPrecondition = session.worktree ?? session.repository ? ContextKeyExpr.true() : ContextKeyExpr.false();
 
 			const mruIndex = lastRunTaskLabel !== undefined
 				? tasks.findIndex(t => t.label === lastRunTaskLabel)
@@ -130,7 +141,6 @@ export class RunScriptContribution extends Disposable implements IWorkbenchContr
 					super({
 						id: CONFIGURE_DEFAULT_RUN_ACTION_ID,
 						title: localize2('configureDefaultRunAction', "Add Run Action..."),
-						tooltip: addRunActionDisabledTooltip,
 						category: SessionsCategories.Sessions,
 						icon: Codicon.play,
 						precondition: configureScriptPrecondition,
@@ -151,6 +161,11 @@ export class RunScriptContribution extends Disposable implements IWorkbenchContr
 
 	private async _showConfigureQuickPick(session: IActiveSessionItem): Promise<void> {
 		const nonSessionTasks = await this._sessionsConfigService.getNonSessionTasks(session);
+		if (nonSessionTasks.length === 0) {
+			// No existing tasks, go straight to custom command input
+			await this._showCustomCommandInput(session);
+			return;
+		}
 
 		interface ITaskPickItem extends IQuickPickItem {
 			readonly task?: ITaskEntry;
@@ -158,6 +173,12 @@ export class RunScriptContribution extends Disposable implements IWorkbenchContr
 		}
 
 		const items: (ITaskPickItem | IQuickPickSeparator)[] = [];
+
+		items.push({ type: 'separator', label: localize('custom', "Custom") });
+		items.push({
+			label: localize('enterCustomCommand', "Enter Custom Command..."),
+			description: localize('enterCustomCommandDesc', "Create a new shell task"),
+		});
 
 		if (nonSessionTasks.length > 0) {
 			items.push({ type: 'separator', label: localize('existingTasks', "Existing Tasks") });
@@ -170,12 +191,6 @@ export class RunScriptContribution extends Disposable implements IWorkbenchContr
 				});
 			}
 		}
-
-		items.push({ type: 'separator', label: localize('custom', "Custom") });
-		items.push({
-			label: localize('enterCustomCommand', "Enter Custom Command..."),
-			description: localize('enterCustomCommandDesc', "Create a new shell task"),
-		});
 
 		const picked = await this._quickInputService.pick(items, {
 			placeHolder: localize('pickRunAction', "Select a task or enter a custom command"),
@@ -215,6 +230,7 @@ export class RunScriptContribution extends Disposable implements IWorkbenchContr
 
 	private async _pickStorageTarget(session: IActiveSessionItem): Promise<TaskStorageTarget | undefined> {
 		const hasWorktree = !!session.worktree;
+		const hasRepository = !!session.repository;
 
 		interface IStorageTargetItem extends IQuickPickItem {
 			target: TaskStorageTarget;
@@ -226,15 +242,21 @@ export class RunScriptContribution extends Disposable implements IWorkbenchContr
 				label: localize('storeInUserSettings', "User Settings"),
 				description: localize('storeInUserSettingsDesc', "Available in all sessions"),
 			},
-			{
+			hasWorktree ? {
 				target: 'workspace',
-				label: localize('storeInWorkspaceSettings', "Workspace Settings"),
-				description: hasWorktree
-					? localize('storeInWorkspaceSettingsDesc', "Stored in session worktree")
-					: localize('storeInWorkspaceSettingsDisabled', "Not available in empty sessions"),
-				italic: !hasWorktree,
-				disabled: !hasWorktree,
-			},
+				label: localize('storeInWorkspaceWorktreeSettings', "Workspace (Worktree)"),
+				description: localize('storeInWorkspaceWorktreeSettingsDesc', "Stored in session worktree"),
+			} : hasRepository ? {
+				target: 'workspace',
+				label: localize('storeInWorkspaceSettings', "Workspace"),
+				description: localize('storeInWorkspace', "Stored in the workspace"),
+			} : {
+				target: 'workspace',
+				label: localize('storeInWorkspaceSettingsDisable', "Workspace Unavailable"),
+				description: localize('storeInWorkspaceDisabled', "Stored in the workspace Unavailable"),
+				disabled: true,
+				italic: true,
+			}
 		];
 
 		return new Promise<TaskStorageTarget | undefined>(resolve => {
