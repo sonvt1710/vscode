@@ -467,7 +467,7 @@ class NewChatWidget extends Disposable {
 		this._register(this._editor.onKeyDown(e => {
 			if (e.keyCode === KeyCode.Enter && !e.shiftKey && !e.ctrlKey && !e.altKey) {
 				// Don't send if the suggest widget is visible (let it accept the completion)
-				if (this.contextKeyService.getContextKeyValue<boolean>('suggestWidgetVisible')) {
+				if (this._editor.contextKeyService.getContextKeyValue<boolean>('suggestWidgetVisible')) {
 					return;
 				}
 				e.preventDefault();
