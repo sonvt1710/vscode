@@ -320,6 +320,12 @@ class NewChatWidget extends Disposable {
 
 	render(container: HTMLElement): void {
 		const wrapper = dom.append(container, dom.$('.sessions-chat-widget'));
+
+		// Overflow widget DOM node at the top level so the suggest widget
+		// is not clipped by any overflow:hidden ancestor.
+		const editorOverflowWidgetsDomNode = dom.append(container, dom.$('.sessions-chat-editor-overflow.monaco-editor'));
+		this._register({ dispose: () => editorOverflowWidgetsDomNode.remove() });
+
 		const welcomeElement = dom.append(wrapper, dom.$('.chat-full-welcome'));
 
 		// Watermark letterpress
@@ -343,7 +349,7 @@ class NewChatWidget extends Disposable {
 		const attachedContextContainer = dom.append(attachRow, dom.$('.sessions-chat-attached-context'));
 		this._contextAttachments.renderAttachedContext(attachedContextContainer);
 
-		this._createEditor(inputArea);
+		this._createEditor(inputArea, editorOverflowWidgetsDomNode);
 		this._createBottomToolbar(inputArea);
 		this._inputSlot.appendChild(inputArea);
 
@@ -406,7 +412,7 @@ class NewChatWidget extends Disposable {
 
 	// --- Editor ---
 
-	private _createEditor(container: HTMLElement): void {
+	private _createEditor(container: HTMLElement, overflowWidgetsDomNode: HTMLElement): void {
 		const editorContainer = dom.append(container, dom.$('.sessions-chat-editor'));
 
 		const uri = URI.from({ scheme: 'sessions-chat', path: `input-${Date.now()}` });
@@ -424,6 +430,7 @@ class NewChatWidget extends Disposable {
 			wrappingStrategy: 'advanced',
 			stickyScroll: { enabled: false },
 			renderWhitespace: 'none',
+			overflowWidgetsDomNode,
 			suggest: {
 				showIcons: true,
 				showSnippets: false,
