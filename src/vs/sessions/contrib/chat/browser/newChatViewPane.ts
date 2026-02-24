@@ -36,7 +36,6 @@ import { SnippetController2 } from '../../../../editor/contrib/snippet/browser/s
 import { IConfigurationService } from '../../../../platform/configuration/common/configuration.js';
 import { IContextKeyService, IContextKey, RawContextKey, ContextKeyExpr } from '../../../../platform/contextkey/common/contextkey.js';
 import { IContextMenuService } from '../../../../platform/contextview/browser/contextView.js';
-import { ICommandService } from '../../../../platform/commands/common/commands.js';
 import { IInstantiationService } from '../../../../platform/instantiation/common/instantiation.js';
 import { IKeybindingService } from '../../../../platform/keybinding/common/keybinding.js';
 import { ILogService } from '../../../../platform/log/common/log.js';
@@ -63,6 +62,7 @@ import { EnhancedModelPickerActionItem } from '../../../../workbench/contrib/cha
 import { IChatInputPickerOptions } from '../../../../workbench/contrib/chat/browser/widget/input/chatInputPickerActionItem.js';
 import { WorkspaceFolderCountContext } from '../../../../workbench/common/contextkeys.js';
 import { IViewDescriptorService } from '../../../../workbench/common/views.js';
+import { IViewsService } from '../../../../workbench/services/views/common/viewsService.js';
 import { IWorkspaceContextService } from '../../../../platform/workspace/common/workspace.js';
 import { IViewPaneOptions, ViewPane } from '../../../../workbench/browser/parts/views/viewPane.js';
 import { ContextMenuController } from '../../../../editor/contrib/contextmenu/browser/contextmenu.js';
@@ -72,6 +72,7 @@ import { isString } from '../../../../base/common/types.js';
 import { NewChatContextAttachments } from './newChatContextAttachments.js';
 import { GITHUB_REMOTE_FILE_SCHEME } from '../../fileTreeView/browser/githubFileSystemProvider.js';
 import { FolderPicker } from './folderPicker.js';
+import { AI_CUSTOMIZATION_VIEW_ID } from '../../aiCustomizationTreeView/browser/aiCustomizationTreeView.js';
 
 /**
  * Minimal slash command descriptor for the sessions new-chat widget.
@@ -266,7 +267,7 @@ class NewChatWidget extends Disposable {
 		@ILanguageFeaturesService private readonly languageFeaturesService: ILanguageFeaturesService,
 		@ICodeEditorService private readonly codeEditorService: ICodeEditorService,
 		@IThemeService private readonly themeService: IThemeService,
-		@ICommandService private readonly commandService: ICommandService,
+		@IViewsService private readonly viewsService: IViewsService,
 	) {
 		super();
 		this._contextAttachments = this._register(this.instantiationService.createInstance(NewChatContextAttachments));
@@ -1107,6 +1108,8 @@ class NewChatWidget extends Disposable {
 	// --- Slash commands ---
 
 	private _registerSlashCommands(): void {
+		const openCustomizationView = () => this.viewsService.openView(AI_CUSTOMIZATION_VIEW_ID, true);
+
 		this._slashCommands.push({
 			command: 'clear',
 			detail: localize('slashCommand.clear', "Start a new chat and archive the current one"),
@@ -1125,32 +1128,39 @@ class NewChatWidget extends Disposable {
 			},
 		});
 		this._slashCommands.push({
-			command: 'hooks',
-			detail: localize('slashCommand.hooks', "Configure hooks"),
-			sortText: 'z3_hooks',
+			command: 'agents',
+			detail: localize('slashCommand.agents', "View and manage custom agents"),
+			sortText: 'z3_agents',
 			executeImmediately: true,
-			execute: () => this.commandService.executeCommand('workbench.action.chat.configure.hooks'),
-		});
-		this._slashCommands.push({
-			command: 'instructions',
-			detail: localize('slashCommand.instructions', "Configure instructions"),
-			sortText: 'z3_instructions',
-			executeImmediately: true,
-			execute: () => this.commandService.executeCommand('workbench.action.chat.configure.instructions'),
+			execute: openCustomizationView,
 		});
 		this._slashCommands.push({
 			command: 'skills',
-			detail: localize('slashCommand.skills', "Configure skills"),
+			detail: localize('slashCommand.skills', "View and manage skills"),
 			sortText: 'z3_skills',
 			executeImmediately: true,
-			execute: () => this.commandService.executeCommand('workbench.action.chat.configure.skills'),
+			execute: openCustomizationView,
+		});
+		this._slashCommands.push({
+			command: 'instructions',
+			detail: localize('slashCommand.instructions', "View and manage instructions"),
+			sortText: 'z3_instructions',
+			executeImmediately: true,
+			execute: openCustomizationView,
 		});
 		this._slashCommands.push({
 			command: 'prompts',
-			detail: localize('slashCommand.prompts', "Configure prompt files"),
+			detail: localize('slashCommand.prompts', "View and manage prompt files"),
 			sortText: 'z3_prompts',
 			executeImmediately: true,
-			execute: () => this.commandService.executeCommand('workbench.action.chat.configure.prompts'),
+			execute: openCustomizationView,
+		});
+		this._slashCommands.push({
+			command: 'hooks',
+			detail: localize('slashCommand.hooks', "View and manage hooks"),
+			sortText: 'z3_hooks',
+			executeImmediately: true,
+			execute: openCustomizationView,
 		});
 	}
 
