@@ -136,8 +136,10 @@ import './widget/input/editor/chatInputEditorHover.js';
 import { LanguageModelToolsConfirmationService } from './tools/languageModelToolsConfirmationService.js';
 import { LanguageModelToolsService, globalAutoApproveDescription } from './tools/languageModelToolsService.js';
 import { AgentPluginService, ConfiguredAgentPluginDiscovery } from '../common/plugins/agentPluginServiceImpl.js';
+import { IPluginInstallService } from '../common/plugins/pluginInstallService.js';
 import { IPluginMarketplaceService, PluginMarketplaceService } from '../common/plugins/pluginMarketplaceService.js';
 import { AgentPluginsViewsContribution } from './agentPluginsView.js';
+import { PluginInstallService } from './pluginInstallService.js';
 import './promptSyntax/promptCodingAgentActionContribution.js';
 import './promptSyntax/promptToolsCodeLensProvider.js';
 import { ChatSlashCommandsContribution } from './chatSlashCommands.js';
@@ -1611,6 +1613,7 @@ registerSingleton(IChatAgentNameService, ChatAgentNameService, InstantiationType
 registerSingleton(IChatVariablesService, ChatVariablesService, InstantiationType.Delayed);
 registerSingleton(IAgentPluginService, AgentPluginService, InstantiationType.Delayed);
 registerSingleton(IPluginMarketplaceService, PluginMarketplaceService, InstantiationType.Delayed);
+registerSingleton(IPluginInstallService, PluginInstallService, InstantiationType.Delayed);
 registerSingleton(ILanguageModelToolsService, LanguageModelToolsService, InstantiationType.Delayed);
 registerSingleton(ILanguageModelToolsConfirmationService, LanguageModelToolsConfirmationService, InstantiationType.Delayed);
 registerSingleton(IVoiceChatService, VoiceChatService, InstantiationType.Delayed);
