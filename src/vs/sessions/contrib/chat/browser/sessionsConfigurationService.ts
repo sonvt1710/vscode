@@ -5,7 +5,7 @@
 
 import { Disposable, DisposableStore, MutableDisposable } from '../../../../base/common/lifecycle.js';
 import { IObservable, observableValue, transaction } from '../../../../base/common/observable.js';
-import { joinPath, dirname } from '../../../../base/common/resources.js';
+import { joinPath, dirname, isEqual } from '../../../../base/common/resources.js';
 import { parse } from '../../../../base/common/jsonc.js';
 import { isMacintosh, isWindows } from '../../../../base/common/platform.js';
 import { URI } from '../../../../base/common/uri.js';
@@ -97,6 +97,7 @@ export class SessionsConfigurationService extends Disposable implements ISession
 	private readonly _lastRunTaskObservables = new Map<string, ReturnType<typeof observableValue<string | undefined>>>();
 
 	private _watchedResource: URI | undefined;
+	private _lastRefreshedFolder: URI | undefined;
 
 	constructor(
 		@IFileService private readonly _fileService: IFileService,
@@ -115,8 +116,11 @@ export class SessionsConfigurationService extends Disposable implements ISession
 		if (folder) {
 			this._ensureFileWatch(folder);
 		}
-		// Trigger initial read
-		this._refreshSessionTasks(folder);
+		// Trigger initial read only when the folder changes; the file watcher handles subsequent updates
+		if (!isEqual(this._lastRefreshedFolder, folder)) {
+			this._lastRefreshedFolder = folder;
+			this._refreshSessionTasks(folder);
+		}
 		return this._sessionTasks;
 	}
 
