@@ -86,6 +86,7 @@ import { IChatTipService } from '../chatTipService.js';
 import { ChatTipContentPart } from './chatContentParts/chatTipContentPart.js';
 import { ChatContentMarkdownRenderer } from './chatContentMarkdownRenderer.js';
 import { IAgentSessionsService } from '../agentSessions/agentSessionsService.js';
+import { IChatDebugService } from '../../common/chatDebugService.js';
 
 const $ = dom.$;
 
@@ -289,6 +290,7 @@ export class ChatWidget extends Disposable implements IChatWidget {
 	private readonly _agentSupportsAttachmentsContextKey: IContextKey<boolean>;
 	private readonly _sessionIsEmptyContextKey: IContextKey<boolean>;
 	private readonly _hasPendingRequestsContextKey: IContextKey<boolean>;
+	private readonly _sessionHasDebugDataContextKey: IContextKey<boolean>;
 	private _attachmentCapabilities: IChatAgentAttachmentCapabilities = supportsAllAttachments;
 
 	// Cache for prompt file descriptions to avoid async calls during rendering
@@ -401,6 +403,7 @@ export class ChatWidget extends Disposable implements IChatWidget {
 		@ILifecycleService private readonly lifecycleService: ILifecycleService,
 		@IChatAttachmentResolveService private readonly chatAttachmentResolveService: IChatAttachmentResolveService,
 		@IChatTipService private readonly chatTipService: IChatTipService,
+		@IChatDebugService private readonly chatDebugService: IChatDebugService,
 	) {
 		super();
 
@@ -408,6 +411,14 @@ export class ChatWidget extends Disposable implements IChatWidget {
 		this._agentSupportsAttachmentsContextKey = ChatContextKeys.agentSupportsAttachments.bindTo(this.contextKeyService);
 		this._sessionIsEmptyContextKey = ChatContextKeys.chatSessionIsEmpty.bindTo(this.contextKeyService);
 		this._hasPendingRequestsContextKey = ChatContextKeys.hasPendingRequests.bindTo(this.contextKeyService);
+		this._sessionHasDebugDataContextKey = ChatContextKeys.chatSessionHasDebugData.bindTo(this.contextKeyService);
+
+		this._register(this.chatDebugService.onDidAddEvent(e => {
+			const sessionResource = this.viewModel?.sessionResource;
+			if (sessionResource && e.sessionResource.toString() === sessionResource.toString()) {
+				this._sessionHasDebugDataContextKey.set(true);
+			}
+		}));
 
 		this.viewContext = viewContext ?? {};
 
@@ -2114,6 +2125,7 @@ export class ChatWidget extends Disposable implements IChatWidget {
 			this.onDidChangeItems();
 		}));
 		this._sessionIsEmptyContextKey.set(model.getRequests().length === 0);
+		this._sessionHasDebugDataContextKey.set(this.chatDebugService.getEvents(model.sessionResource).length > 0);
 		let lastSteeringCount = 0;
 		const updatePendingRequestKeys = (announceSteering: boolean) => {
 			const pendingRequests = model.getPendingRequests();
@@ -2806,7 +2818,8 @@ export class ChatWidget extends Disposable implements IChatWidget {
 		this.logService.debug(`ChatWidget#_autoAttachInstructions: prompt files are always enabled`);
 		const enabledTools = this.input.currentModeKind === ChatModeKind.Agent ? this.input.selectedToolsModel.userSelectedTools.get() : undefined;
 		const enabledSubAgents = this.input.currentModeKind === ChatModeKind.Agent ? this.input.currentModeObs.get().agents?.get() : undefined;
-		const computer = this.instantiationService.createInstance(ComputeAutomaticInstructions, this.input.currentModeKind, enabledTools, enabledSubAgents);
+		const sessionId = this._viewModel?.model.sessionId;
+		const computer = this.instantiationService.createInstance(ComputeAutomaticInstructions, this.input.currentModeKind, enabledTools, enabledSubAgents, sessionId);
 		await computer.collect(attachedContext, CancellationToken.None);
 	}
 
