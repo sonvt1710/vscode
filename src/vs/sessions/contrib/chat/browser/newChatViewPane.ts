@@ -88,6 +88,8 @@ interface ISessionsSlashCommandData {
 	readonly executeImmediately?: boolean;
 	/** Callback to execute when the command is invoked. */
 	readonly execute: (args: string) => void;
+	/** Which session targets this command applies to. If omitted, shown for all targets. */
+	readonly targets?: readonly AgentSessionProviders[];
 }
 
 // #endregion
@@ -1113,6 +1115,10 @@ class NewChatWidget extends Disposable {
 	// --- Slash commands ---
 
 	private _registerSlashCommands(): void {
+		const Local = AgentSessionProviders.Local;
+		const Background = AgentSessionProviders.Background;
+		const Cloud = AgentSessionProviders.Cloud;
+
 		this._slashCommands.push({
 			command: 'clear',
 			detail: localize('slashCommand.clear', "Start a new chat"),
@@ -1126,7 +1132,8 @@ class NewChatWidget extends Disposable {
 			sortText: 'z1_help',
 			executeImmediately: true,
 			execute: () => {
-				const helpLines = this._slashCommands.map(c => `  /${c.command} — ${c.detail}`);
+				const commands = this._getSlashCommandsForCurrentTarget();
+				const helpLines = commands.map(c => `  /${c.command} — ${c.detail}`);
 				this.logService.info(`Available slash commands:\n${helpLines.join('\n')}`);
 			},
 		});
@@ -1150,6 +1157,7 @@ class NewChatWidget extends Disposable {
 			sortText: 'z3_tools',
 			executeImmediately: true,
 			execute: () => this.commandService.executeCommand('workbench.action.chat.configureTools'),
+			targets: [Local, Background],
 		});
 		this._slashCommands.push({
 			command: 'skills',
@@ -1157,6 +1165,7 @@ class NewChatWidget extends Disposable {
 			sortText: 'z3_skills',
 			executeImmediately: true,
 			execute: () => this.commandService.executeCommand('workbench.action.chat.configure.skills'),
+			targets: [Local, Background],
 		});
 		this._slashCommands.push({
 			command: 'instructions',
@@ -1164,6 +1173,7 @@ class NewChatWidget extends Disposable {
 			sortText: 'z3_instructions',
 			executeImmediately: true,
 			execute: () => this.commandService.executeCommand('workbench.action.chat.configure.instructions'),
+			targets: [Local, Background],
 		});
 		this._slashCommands.push({
 			command: 'prompts',
@@ -1171,6 +1181,7 @@ class NewChatWidget extends Disposable {
 			sortText: 'z3_prompts',
 			executeImmediately: true,
 			execute: () => this.commandService.executeCommand('workbench.action.chat.configure.prompts'),
+			targets: [Local, Background],
 		});
 		this._slashCommands.push({
 			command: 'hooks',
@@ -1178,6 +1189,7 @@ class NewChatWidget extends Disposable {
 			sortText: 'z3_hooks',
 			executeImmediately: true,
 			execute: () => this.commandService.executeCommand('workbench.action.chat.configure.hooks'),
+			targets: [Local, Background],
 		});
 		this._slashCommands.push({
 			command: 'debug',
@@ -1186,6 +1198,14 @@ class NewChatWidget extends Disposable {
 			executeImmediately: true,
 			execute: () => this.commandService.executeCommand('github.copilot.debug.showChatLogView'),
 		});
+	}
+
+	private _getSlashCommandsForCurrentTarget(): ISessionsSlashCommandData[] {
+		const target = this._getEffectiveTarget();
+		if (!target) {
+			return this._slashCommands;
+		}
+		return this._slashCommands.filter(c => !c.targets || c.targets.includes(target));
 	}
 
 	private static readonly _slashDecoType = 'sessions-slash-command';
@@ -1218,7 +1238,7 @@ class NewChatWidget extends Disposable {
 		}
 
 		const commandName = match[1];
-		const slashCommand = this._slashCommands.find(c => c.command === commandName);
+		const slashCommand = this._getSlashCommandsForCurrentTarget().find(c => c.command === commandName);
 		if (!slashCommand) {
 			this._editor.setDecorationsByType('sessions-chat', NewChatWidget._slashDecoType, []);
 			this._editor.setDecorationsByType('sessions-chat', NewChatWidget._slashPlaceholderDecoType, []);
@@ -1267,7 +1287,7 @@ class NewChatWidget extends Disposable {
 		}
 
 		const commandName = match[1];
-		const slashCommand = this._slashCommands.find(c => c.command === commandName);
+		const slashCommand = this._getSlashCommandsForCurrentTarget().find(c => c.command === commandName);
 		if (!slashCommand) {
 			return false;
 		}
@@ -1297,8 +1317,9 @@ class NewChatWidget extends Disposable {
 					return null;
 				}
 
+				const commands = this._getSlashCommandsForCurrentTarget();
 				return {
-					suggestions: this._slashCommands.map((c, i): CompletionItem => {
+					suggestions: commands.map((c, i): CompletionItem => {
 						const withSlash = `/${c.command}`;
 						return {
 							label: withSlash,
