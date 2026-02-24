@@ -497,7 +497,7 @@ export class AgentPluginsViewsContribution extends Disposable implements IWorkbe
 
 		const hasInstalledKey = HasInstalledAgentPluginsContext.bindTo(contextKeyService);
 		this._register(autorun(reader => {
-			hasInstalledKey.set(agentPluginService.plugins.read(reader).length > 0);
+			hasInstalledKey.set(agentPluginService.allPlugins.read(reader).length > 0);
 		}));
 
 		Registry.as<IViewsRegistry>(ViewExtensions.ViewsRegistry).registerViews([

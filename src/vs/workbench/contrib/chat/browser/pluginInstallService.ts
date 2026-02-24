@@ -145,8 +145,8 @@ export class PluginInstallService implements IPluginInstallService {
 		return pluginDir;
 	}
 
-	uninstallPlugin(pluginUri: URI): void {
-		this._removePluginPath(pluginUri.fsPath);
+	async uninstallPlugin(pluginUri: URI): Promise<void> {
+		await this._removePluginPath(pluginUri.fsPath);
 	}
 
 	getPluginInstallUri(plugin: IMarketplacePlugin): URI {
@@ -172,14 +172,14 @@ export class PluginInstallService implements IPluginInstallService {
 	/**
 	 * Removes the given file-system path from `chat.plugins.paths` in user-local config.
 	 */
-	private _removePluginPath(fsPath: string): void {
+	private _removePluginPath(fsPath: string) {
 		const current = this._configurationService.getValue<Record<string, boolean>>(ChatConfiguration.PluginPaths) ?? {};
 		if (!Object.prototype.hasOwnProperty.call(current, fsPath)) {
 			return;
 		}
 		const updated = { ...current };
 		delete updated[fsPath];
-		this._configurationService.updateValue(
+		return this._configurationService.updateValue(
 			ChatConfiguration.PluginPaths,
 			updated,
 			ConfigurationTarget.USER_LOCAL,

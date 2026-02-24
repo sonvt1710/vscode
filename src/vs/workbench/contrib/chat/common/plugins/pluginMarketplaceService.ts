@@ -100,7 +100,7 @@ export class PluginMarketplaceService implements IPluginMarketplaceService {
 					)
 					.flatMap(p => {
 						const source = resolvePluginSource(json.metadata?.pluginRoot, p.source ?? '');
-						if (!source) {
+						if (source === undefined) {
 							this._logService.warn(`[PluginMarketplaceService] Skipping plugin '${p.name}' in ${repo}: invalid source path '${p.source ?? ''}' with pluginRoot '${json.metadata?.pluginRoot ?? ''}'`);
 							return [];
 						}

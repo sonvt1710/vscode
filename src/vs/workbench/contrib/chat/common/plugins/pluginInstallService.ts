@@ -21,7 +21,7 @@ export interface IPluginInstallService {
 	/**
 	 * Removes the plugin from `chat.plugins.paths` config.
 	 */
-	uninstallPlugin(pluginUri: URI): void;
+	uninstallPlugin(pluginUri: URI): Promise<void>;
 
 	/**
 	 * Pulls the latest changes for an already-cloned marketplace repository.
