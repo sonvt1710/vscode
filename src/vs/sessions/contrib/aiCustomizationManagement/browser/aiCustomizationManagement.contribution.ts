@@ -23,6 +23,7 @@ import {
 	AI_CUSTOMIZATION_MANAGEMENT_EDITOR_INPUT_ID,
 	AICustomizationManagementCommands,
 	AICustomizationManagementItemMenuId,
+	AICustomizationManagementSection,
 } from './aiCustomizationManagement.js';
 import { IWorkbenchContribution, registerWorkbenchContribution2, WorkbenchPhase } from '../../../../workbench/common/contributions.js';
 import { Codicon } from '../../../../base/common/codicons.js';
@@ -276,10 +277,13 @@ class AICustomizationManagementActionsContribution extends Disposable implements
 				});
 			}
 
-			async run(accessor: ServicesAccessor): Promise<void> {
+			async run(accessor: ServicesAccessor, section?: AICustomizationManagementSection): Promise<void> {
 				const editorGroupsService = accessor.get(IEditorGroupsService);
 				const input = AICustomizationManagementEditorInput.getOrCreate();
-				await editorGroupsService.activeGroup.openEditor(input, { pinned: true });
+				const pane = await editorGroupsService.activeGroup.openEditor(input, { pinned: true });
+				if (section && pane && 'selectSectionById' in pane) {
+					(pane as { selectSectionById(s: AICustomizationManagementSection): void }).selectSectionById(section);
+				}
 			}
 		}));
 	}

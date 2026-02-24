@@ -72,7 +72,7 @@ import { isString } from '../../../../base/common/types.js';
 import { NewChatContextAttachments } from './newChatContextAttachments.js';
 import { GITHUB_REMOTE_FILE_SCHEME } from '../../fileTreeView/browser/githubFileSystemProvider.js';
 import { FolderPicker } from './folderPicker.js';
-import { AICustomizationManagementCommands } from '../../aiCustomizationManagement/browser/aiCustomizationManagement.js';
+import { AICustomizationManagementCommands, AICustomizationManagementSection } from '../../aiCustomizationManagement/browser/aiCustomizationManagement.js';
 
 /**
  * Minimal slash command descriptor for the sessions new-chat widget.
@@ -1108,7 +1108,8 @@ class NewChatWidget extends Disposable {
 	// --- Slash commands ---
 
 	private _registerSlashCommands(): void {
-		const openCustomizations = () => this.commandService.executeCommand(AICustomizationManagementCommands.OpenEditor);
+		const openSection = (section: AICustomizationManagementSection) =>
+			() => this.commandService.executeCommand(AICustomizationManagementCommands.OpenEditor, section);
 
 		this._slashCommands.push({
 			command: 'clear',
@@ -1132,49 +1133,49 @@ class NewChatWidget extends Disposable {
 			detail: localize('slashCommand.agents', "View and manage custom agents"),
 			sortText: 'z3_agents',
 			executeImmediately: true,
-			execute: openCustomizations,
+			execute: openSection(AICustomizationManagementSection.Agents),
 		});
 		this._slashCommands.push({
 			command: 'skills',
 			detail: localize('slashCommand.skills', "View and manage skills"),
 			sortText: 'z3_skills',
 			executeImmediately: true,
-			execute: openCustomizations,
+			execute: openSection(AICustomizationManagementSection.Skills),
 		});
 		this._slashCommands.push({
 			command: 'instructions',
 			detail: localize('slashCommand.instructions', "View and manage instructions"),
 			sortText: 'z3_instructions',
 			executeImmediately: true,
-			execute: openCustomizations,
+			execute: openSection(AICustomizationManagementSection.Instructions),
 		});
 		this._slashCommands.push({
 			command: 'prompts',
 			detail: localize('slashCommand.prompts', "View and manage prompt files"),
 			sortText: 'z3_prompts',
 			executeImmediately: true,
-			execute: openCustomizations,
+			execute: openSection(AICustomizationManagementSection.Prompts),
 		});
 		this._slashCommands.push({
 			command: 'hooks',
 			detail: localize('slashCommand.hooks', "View and manage hooks"),
 			sortText: 'z3_hooks',
 			executeImmediately: true,
-			execute: openCustomizations,
+			execute: openSection(AICustomizationManagementSection.Hooks),
 		});
 		this._slashCommands.push({
 			command: 'mcp',
 			detail: localize('slashCommand.mcp', "View and manage MCP servers"),
 			sortText: 'z3_mcp',
 			executeImmediately: true,
-			execute: openCustomizations,
+			execute: openSection(AICustomizationManagementSection.McpServers),
 		});
 		this._slashCommands.push({
 			command: 'models',
 			detail: localize('slashCommand.models', "View and manage models"),
 			sortText: 'z3_models',
 			executeImmediately: true,
-			execute: openCustomizations,
+			execute: openSection(AICustomizationManagementSection.Models),
 		});
 	}
 
