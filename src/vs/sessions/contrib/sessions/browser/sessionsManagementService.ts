@@ -218,8 +218,10 @@ export class SessionsManagementService extends Disposable implements ISessionsMa
 		return this._activeSession.get();
 	}
 
-	async openSession(sessionResource: URI, openOptions?: ISessionOpenOptions): Promise<void> {
-		this.isNewChatSessionContext.set(false);
+	async openSession(sessionResource: URI, openOptions?: ISessionOpenOptions & { hidden?: boolean }): Promise<void> {
+		if (!openOptions?.hidden) {
+			this.isNewChatSessionContext.set(false);
+		}
 		const existingSession = this.agentSessionsService.model.getSession(sessionResource);
 		if (existingSession) {
 			await this.openExistingSession(existingSession, openOptions);
@@ -309,9 +311,7 @@ export class SessionsManagementService extends Disposable implements ISessionsMa
 
 	private async doSendRequestForNewSession(session: INewSession, query: string, sendOptions: IChatSendRequestOptions, selectedOptions?: ReadonlyMap<string, IChatSessionProviderOptionItem>, openNewSessionView?: boolean): Promise<void> {
 		// 1. Open the session - loads the model and shows the ChatViewPane
-		if (!openNewSessionView) {
-			await this.openSession(session.resource);
-		}
+		await this.openSession(session.resource, openNewSessionView ? { hidden: true } : undefined);
 
 		// 2. Apply selected options (repository, branch, etc.) to the contributed session
 		if (selectedOptions && selectedOptions.size > 0) {
