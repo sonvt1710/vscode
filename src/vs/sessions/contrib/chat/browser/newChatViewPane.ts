@@ -1133,6 +1133,23 @@ export class NewChatViewPane extends ViewPane {
 
 // #endregion
 
+// #region --- Sessions Chat View Pane ---
+
+import { ChatViewPane } from '../../../../workbench/contrib/chat/browser/widgetHosts/viewPane/chatViewPane.js';
+
+/**
+ * Sessions-window subclass of {@link ChatViewPane} that restricts the session
+ * target and delegation pickers to only show targets supported by the agent
+ * sessions window (Background and Cloud).
+ */
+export class SessionsChatViewPane extends ChatViewPane {
+	protected override getAllowedSessionTargets(): ReadonlySet<AgentSessionProviders> {
+		return new Set([AgentSessionProviders.Background, AgentSessionProviders.Cloud]);
+	}
+}
+
+// #endregion
+
 /**
  * Check whether an option group represents the model picker.
  * The convention is `id: 'models'` but extensions may use different IDs

@@ -32,21 +32,10 @@ import { IPromptsService } from '../../../../workbench/contrib/chat/common/promp
 import { ISessionsConfigurationService, SessionsConfigurationService } from './sessionsConfigurationService.js';
 import { ChatViewContainerId, ChatViewId } from '../../../../workbench/contrib/chat/browser/chat.js';
 import { CHAT_CATEGORY } from '../../../../workbench/contrib/chat/browser/actions/chatActions.js';
-import { NewChatViewPane, SessionsViewId } from './newChatViewPane.js';
+import { NewChatViewPane, SessionsChatViewPane, SessionsViewId } from './newChatViewPane.js';
 import { ViewPaneContainer } from '../../../../workbench/browser/parts/views/viewPaneContainer.js';
 import { registerIcon } from '../../../../platform/theme/common/iconRegistry.js';
-import { ChatViewPane } from '../../../../workbench/contrib/chat/browser/widgetHosts/viewPane/chatViewPane.js';
 
-/**
- * Sessions-window subclass of {@link ChatViewPane} that restricts the session
- * target and delegation pickers to only show targets supported by the agent
- * sessions window (Local and Cloud).
- */
-class SessionsChatViewPane extends ChatViewPane {
-	protected override getAllowedSessionTargets(): ReadonlySet<AgentSessionProviders> {
-		return new Set([AgentSessionProviders.Local, AgentSessionProviders.Cloud]);
-	}
-}
 
 export class OpenSessionWorktreeInVSCodeAction extends Action2 {
 	static readonly ID = 'chat.openSessionWorktreeInVSCode';
