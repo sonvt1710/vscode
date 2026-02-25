@@ -37,6 +37,7 @@ import { IChatSessionsExtensionPoint, IChatSessionsService } from '../../common/
 import { ChatAgentLocation } from '../../common/constants.js';
 import { PROMPT_LANGUAGE_ID } from '../../common/promptSyntax/promptTypes.js';
 import { AgentSessionProviders, getAgentSessionProvider, getAgentSessionProviderIcon, getAgentSessionProviderName } from '../agentSessions/agentSessions.js';
+import { IAgentSessionsService } from '../agentSessions/agentSessionsService.js';
 import { IChatWidget, IChatWidgetService, isIChatViewViewContext } from '../chat.js';
 import { ctxHasEditorModification } from '../chatEditing/chatEditingEditorContextKeys.js';
 import { CHAT_SETUP_ACTION_ID } from './chatActions.js';
@@ -224,6 +225,62 @@ export class CreateRemoteAgentJobAction {
 		commandService.executeCommand(`${NEW_CHAT_SESSION_ACTION_ID}.${continuationTarget.type}`);
 	}
 
+	/**
+	 * Extracts the GitHub "owner/repo" NWO from the source session by checking
+	 * multiple data sources: chat model repoData, session metadata, and session options.
+	 */
+	private extractRepoNwoFromSession(accessor: ServicesAccessor, sessionResource: URI, chatModel: ChatModel): string | undefined {
+		// 1. Try chat model's repoData (populated when local git repo exists)
+		const repoData = chatModel.repoData;
+		if (repoData?.remoteUrl) {
+			const nwo = extractNwoFromRemoteUrl(repoData.remoteUrl);
+			if (nwo) {
+				return nwo;
+			}
+		}
+
+		// 2. Try agent session metadata (populated by session providers)
+		const agentSessionsService = accessor.get(IAgentSessionsService);
+		const agentSession = agentSessionsService.getSession(sessionResource);
+		if (agentSession?.metadata) {
+			const metadata = agentSession.metadata;
+
+			// Cloud sessions set name/owner in metadata
+			const owner = metadata.owner as string | undefined;
+			const name = metadata.name as string | undefined;
+			if (owner && name) {
+				return `${owner}/${name}`;
+			}
+
+			// Background sessions may set repositoryNwo directly
+			const repositoryNwo = metadata.repositoryNwo as string | undefined;
+			if (repositoryNwo?.includes('/')) {
+				return repositoryNwo;
+			}
+
+			// Background sessions may set repositoryUrl
+			const repositoryUrl = metadata.repositoryUrl as string | undefined;
+			if (repositoryUrl) {
+				const nwo = extractNwoFromRemoteUrl(repositoryUrl);
+				if (nwo) {
+					return nwo;
+				}
+			}
+		}
+
+		// 3. Try session options (repository picker selection)
+		const chatSessionsService = accessor.get(IChatSessionsService);
+		const repoOption = chatSessionsService.getSessionOption(sessionResource, 'repositories');
+		if (repoOption) {
+			const optionValue = typeof repoOption === 'string' ? repoOption : (repoOption as { id: string }).id;
+			if (optionValue?.includes('/')) {
+				return optionValue;
+			}
+		}
+
+		return undefined;
+	}
+
 	async run(accessor: ServicesAccessor, continuationTarget: IChatSessionsExtensionPoint, _widget?: IChatWidget) {
 		const contextKeyService = accessor.get(IContextKeyService);
 		const commandService = accessor.get(ICommandService);
@@ -315,15 +372,12 @@ export class CreateRemoteAgentJobAction {
 
 				// Extract repository info from the source session to pass to the target session
 				const initialSessionOptions: { optionId: string; value: string }[] = [];
-				const repoData = chatModel.repoData;
-				if (repoData?.remoteUrl) {
-					const nwo = extractNwoFromRemoteUrl(repoData.remoteUrl);
-					if (nwo) {
-						initialSessionOptions.push({ optionId: 'repositories', value: nwo });
-					}
+				const repoNwo = this.extractRepoNwoFromSession(accessor, sessionResource, chatModel);
+				if (repoNwo) {
+					initialSessionOptions.push({ optionId: 'repositories', value: repoNwo });
 				}
 
-				console.log(`[Delegation] CreateRemoteAgentJobAction: cross-type delegation (${sourceProvider} -> ${continuationTargetType}), isSidebar=${isSidebar}, repoNwo=${initialSessionOptions.find(o => o.optionId === 'repositories')?.value}`);
+				console.log(`[Delegation] CreateRemoteAgentJobAction: cross-type delegation (${sourceProvider} -> ${continuationTargetType}), isSidebar=${isSidebar}, repoNwo=${repoNwo}`);
 				await commandService.executeCommand(actionId, {
 					prompt: delegationPrompt,
 					attachedContext: attachedContext.asArray(),
