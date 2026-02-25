@@ -91,6 +91,12 @@
 		inset calc(-1 * 5px) 0 10px -4px rgba(0, 0, 0, 0.05);
 }
 
+.monaco-workbench.panel-position-top.vs .part.editor::after {
+	box-shadow:
+		inset var(--shadow-depth-x),
+		inset calc(-1 * 5px) 0 10px -4px rgba(0, 0, 0, 0.04),
+		inset 0 var(--shadow-depth-y);
+}
 .monaco-workbench.vs .part.editor > .content .editor-group-container > .title {
 	box-shadow: none;
 }
