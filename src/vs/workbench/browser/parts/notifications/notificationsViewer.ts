@@ -321,6 +321,7 @@ export class NotificationTemplateRenderer extends Disposable {
 		if (!NotificationTemplateRenderer.expandNotificationAction) {
 			return;
 		}
+
 		const position = getNotificationsPosition(configurationService);
 		NotificationTemplateRenderer.expandNotificationAction.class = ThemeIcon.asClassName(getNotificationExpandIcon(position));
 		NotificationTemplateRenderer.collapseNotificationAction.class = ThemeIcon.asClassName(getNotificationCollapseIcon(position));

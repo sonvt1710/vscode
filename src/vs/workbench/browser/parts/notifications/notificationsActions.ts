@@ -22,6 +22,9 @@ const expandIcon = registerIcon('notifications-expand', Codicon.chevronUp, local
 const expandDownIcon = registerIcon('notifications-expand-down', Codicon.chevronDown, localize('expandDownIcon', 'Icon for the expand action in notifications when the notification center is at the top.'));
 const collapseIcon = registerIcon('notifications-collapse', Codicon.chevronDown, localize('collapseIcon', 'Icon for the collapse action in notifications.'));
 const collapseUpIcon = registerIcon('notifications-collapse-up', Codicon.chevronUp, localize('collapseUpIcon', 'Icon for the collapse action in notifications when the notification center is at the top.'));
+const configureIcon = registerIcon('notifications-configure', Codicon.gear, localize('configureIcon', 'Icon for the configure action in notifications.'));
+const doNotDisturbIcon = registerIcon('notifications-do-not-disturb', Codicon.bellSlash, localize('doNotDisturbIcon', 'Icon for the mute all action in notifications.'));
+export const positionIcon = registerIcon('notifications-position', Codicon.arrowSwap, localize('positionIcon', 'Icon for the position action in notifications.'));
 
 export function getNotificationExpandIcon(position: NotificationsPosition): ThemeIcon {
 	return position === NotificationsPosition.TOP_RIGHT ? expandDownIcon : expandIcon;
@@ -30,10 +33,6 @@ export function getNotificationExpandIcon(position: NotificationsPosition): Them
 export function getNotificationCollapseIcon(position: NotificationsPosition): ThemeIcon {
 	return position === NotificationsPosition.TOP_RIGHT ? collapseUpIcon : collapseIcon;
 }
-
-const configureIcon = registerIcon('notifications-configure', Codicon.gear, localize('configureIcon', 'Icon for the configure action in notifications.'));
-const doNotDisturbIcon = registerIcon('notifications-do-not-disturb', Codicon.bellSlash, localize('doNotDisturbIcon', 'Icon for the mute all action in notifications.'));
-export const positionIcon = registerIcon('notifications-position', Codicon.arrowSwap, localize('positionIcon', 'Icon for the position action in notifications.'));
 
 export class ClearNotificationAction extends Action {
 
