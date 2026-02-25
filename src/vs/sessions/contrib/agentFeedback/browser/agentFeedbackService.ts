@@ -320,17 +320,18 @@ export class AgentFeedbackService extends Disposable implements IAgentFeedbackSe
 
 		// Wait for the attachment contribution to update the chat widget's attachment model
 		const widget = this._chatWidgetService.getWidgetBySessionResource(sessionResource);
-		if (!widget) {
-			return;
-		}
+		if (widget) {
+			const attachmentId = 'agentFeedback:' + sessionResource.toString();
+			const hasAttachment = () => widget.attachmentModel.attachments.some(a => a.id === attachmentId);
 
-		const attachmentId = 'agentFeedback:' + sessionResource.toString();
-		const hasAttachment = () => widget.attachmentModel.attachments.some(a => a.id === attachmentId);
-
-		if (!hasAttachment()) {
-			await Event.toPromise(
-				Event.filter(widget.attachmentModel.onDidChange, () => hasAttachment())
-			);
+			if (!hasAttachment()) {
+				await Event.toPromise(
+					Event.filter(widget.attachmentModel.onDidChange, () => hasAttachment())
+				);
+			}
+		} else {
+			// This should not normally happen, but if the widget isn't found, wait a bit to give it a chance to initialize before submitting.
+			await new Promise(resolve => setTimeout(resolve, 100));
 		}
 
 		await this._commandService.executeCommand('agentFeedbackEditor.action.submit');
