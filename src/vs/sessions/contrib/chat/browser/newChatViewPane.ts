@@ -1164,17 +1164,17 @@ class NewChatWidget extends Disposable {
 
 	private static readonly _slashDecoType = 'sessions-slash-command';
 	private static readonly _slashPlaceholderDecoType = 'sessions-slash-placeholder';
-	private _slashDecosRegistered = false;
+	private static _slashDecosRegistered = false;
 
 	private _registerSlashCommandDecorations(): void {
-		if (!this._slashDecosRegistered) {
-			this._slashDecosRegistered = true;
-			this._register(this.codeEditorService.registerDecorationType('sessions-chat', NewChatWidget._slashDecoType, {
+		if (!NewChatWidget._slashDecosRegistered) {
+			NewChatWidget._slashDecosRegistered = true;
+			this.codeEditorService.registerDecorationType('sessions-chat', NewChatWidget._slashDecoType, {
 				color: themeColorFromId(chatSlashCommandForeground),
 				backgroundColor: themeColorFromId(chatSlashCommandBackground),
 				borderRadius: '3px',
-			}));
-			this._register(this.codeEditorService.registerDecorationType('sessions-chat', NewChatWidget._slashPlaceholderDecoType, {}));
+			});
+			this.codeEditorService.registerDecorationType('sessions-chat', NewChatWidget._slashPlaceholderDecoType, {});
 		}
 
 		this._register(this._editor.onDidChangeModelContent(() => this._updateSlashCommandDecorations()));
