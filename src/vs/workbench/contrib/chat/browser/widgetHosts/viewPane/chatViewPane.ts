@@ -49,7 +49,6 @@ import { IChatSessionsService, localChatSessionType } from '../../../common/chat
 import { LocalChatSessionUri, getChatSessionType } from '../../../common/model/chatUri.js';
 import { ChatAgentLocation, ChatConfiguration, ChatModeKind } from '../../../common/constants.js';
 import { AgentSessionsControl } from '../../agentSessions/agentSessionsControl.js';
-import { AgentSessionProviders } from '../../agentSessions/agentSessions.js';
 import { ACTION_ID_NEW_CHAT } from '../../actions/chatActions.js';
 import { ChatWidget } from '../../widget/chatWidget.js';
 import { ChatViewWelcomeController, IViewWelcomeDelegate } from '../../viewsWelcome/chatViewWelcomeController.js';
@@ -531,7 +530,6 @@ export class ChatViewPane extends ViewPane implements IViewWelcomeDelegate {
 					: 'explicit',
 				supportsChangingModes: true,
 				dndContainer: parent,
-				allowedSessionTargets: this.getAllowedSessionTargets(),
 			},
 			{
 				listForeground: SIDE_BAR_FOREGROUND,
@@ -547,15 +545,6 @@ export class ChatViewPane extends ViewPane implements IViewWelcomeDelegate {
 		this._register(autorun(reader => updateWidgetVisibility(reader)));
 
 		return this._widget;
-	}
-
-	/**
-	 * Returns the set of allowed session targets for the pickers, or undefined to allow all.
-	 * Subclasses (e.g. in the agent sessions window) can override this to restrict
-	 * the visible targets in the session target and delegation pickers.
-	 */
-	protected getAllowedSessionTargets(): ReadonlySet<AgentSessionProviders> | undefined {
-		return undefined;
 	}
 
 	private createChatTitleControl(parent: HTMLElement): void {

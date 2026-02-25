@@ -32,10 +32,10 @@ import { IPromptsService } from '../../../../workbench/contrib/chat/common/promp
 import { ISessionsConfigurationService, SessionsConfigurationService } from './sessionsConfigurationService.js';
 import { ChatViewContainerId, ChatViewId } from '../../../../workbench/contrib/chat/browser/chat.js';
 import { CHAT_CATEGORY } from '../../../../workbench/contrib/chat/browser/actions/chatActions.js';
-import { NewChatViewPane, SessionsChatViewPane, SessionsViewId } from './newChatViewPane.js';
+import { NewChatViewPane, SessionsViewId } from './newChatViewPane.js';
 import { ViewPaneContainer } from '../../../../workbench/browser/parts/views/viewPaneContainer.js';
 import { registerIcon } from '../../../../platform/theme/common/iconRegistry.js';
-
+import { ChatViewPane } from '../../../../workbench/contrib/chat/browser/widgetHosts/viewPane/chatViewPane.js';
 
 export class OpenSessionWorktreeInVSCodeAction extends Action2 {
 	static readonly ID = 'chat.openSessionWorktreeInVSCode';
@@ -201,7 +201,7 @@ class RegisterChatViewContainerContribution implements IWorkbenchContribution {
 			name: localize2('chat.viewContainer.label', "Chat"),
 			canToggleVisibility: false,
 			canMoveView: false,
-			ctorDescriptor: new SyncDescriptor(SessionsChatViewPane),
+			ctorDescriptor: new SyncDescriptor(ChatViewPane),
 			when: IsNewChatSessionContext.negate(),
 			windowVisibility: WindowVisibility.Sessions
 		}, {
