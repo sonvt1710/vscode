@@ -15,7 +15,7 @@ import { Position } from '../../../../editor/common/core/position.js';
 import { Range } from '../../../../editor/common/core/range.js';
 import { getWordAtText } from '../../../../editor/common/core/wordHelper.js';
 import { ILanguageFeaturesService } from '../../../../editor/common/services/languageFeatures.js';
-import { ICommandService } from '../../../../platform/commands/common/commands.js';
+import { CommandsRegistry, ICommandService } from '../../../../platform/commands/common/commands.js';
 import { IThemeService } from '../../../../platform/theme/common/themeService.js';
 import { inputPlaceholderForeground } from '../../../../platform/theme/common/colorRegistry.js';
 import { localize } from '../../../../nls.js';
@@ -46,6 +46,7 @@ export class SlashCommandHandler extends Disposable {
 	private static _slashDecosRegistered = false;
 
 	private readonly _slashCommands: ISessionsSlashCommandData[] = [];
+	private readonly _executeSlashCommandId: string;
 
 	constructor(
 		private readonly _editor: CodeEditorWidget,
@@ -55,6 +56,12 @@ export class SlashCommandHandler extends Disposable {
 		@IThemeService private readonly themeService: IThemeService,
 	) {
 		super();
+		const modelUri = this._editor.getModel()?.uri.toString() ?? String(Date.now());
+		this._executeSlashCommandId = `sessions.chat.executeSlashCommand.${modelUri}`;
+		this._register(CommandsRegistry.registerCommand(this._executeSlashCommandId, (_, slashCommandStr: string) => {
+			this.tryExecuteSlashCommand(slashCommandStr);
+			this._editor.getModel()?.setValue('');
+		}));
 		this._registerSlashCommands();
 		this._registerCompletions();
 		this._registerDecorations();
@@ -226,11 +233,12 @@ export class SlashCommandHandler extends Disposable {
 						const withSlash = `/${c.command}`;
 						return {
 							label: withSlash,
-							insertText: `${withSlash} `,
+							insertText: c.executeImmediately ? '' : `${withSlash} `,
 							detail: c.detail,
 							range,
 							sortText: c.sortText ?? 'a'.repeat(i + 1),
 							kind: CompletionItemKind.Text,
+							command: c.executeImmediately ? { id: this._executeSlashCommandId, title: withSlash, arguments: [withSlash] } : undefined,
 						};
 					})
 				};
