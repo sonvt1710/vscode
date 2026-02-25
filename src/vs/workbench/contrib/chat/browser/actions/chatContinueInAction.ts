@@ -232,6 +232,7 @@ export class CreateRemoteAgentJobAction {
 	private extractRepoNwoFromSession(accessor: ServicesAccessor, sessionResource: URI, chatModel: ChatModel): string | undefined {
 		// 1. Try chat model's repoData (populated when local git repo exists)
 		const repoData = chatModel.repoData;
+		console.log(`[Delegation] extractRepoNwo: repoData=${JSON.stringify(repoData ? { remoteUrl: repoData.remoteUrl, workspaceType: repoData.workspaceType } : null)}`);
 		if (repoData?.remoteUrl) {
 			const nwo = extractNwoFromRemoteUrl(repoData.remoteUrl);
 			if (nwo) {
@@ -242,6 +243,7 @@ export class CreateRemoteAgentJobAction {
 		// 2. Try agent session metadata (populated by session providers)
 		const agentSessionsService = accessor.get(IAgentSessionsService);
 		const agentSession = agentSessionsService.getSession(sessionResource);
+		console.log(`[Delegation] extractRepoNwo: agentSession=${!!agentSession}, metadata=${JSON.stringify(agentSession?.metadata)}`);
 		if (agentSession?.metadata) {
 			const metadata = agentSession.metadata;
 
@@ -271,6 +273,7 @@ export class CreateRemoteAgentJobAction {
 		// 3. Try session options (repository picker selection)
 		const chatSessionsService = accessor.get(IChatSessionsService);
 		const repoOption = chatSessionsService.getSessionOption(sessionResource, 'repositories');
+		console.log(`[Delegation] extractRepoNwo: repoOption=${JSON.stringify(repoOption)}`);
 		if (repoOption) {
 			const optionValue = typeof repoOption === 'string' ? repoOption : (repoOption as { id: string }).id;
 			if (optionValue?.includes('/')) {
