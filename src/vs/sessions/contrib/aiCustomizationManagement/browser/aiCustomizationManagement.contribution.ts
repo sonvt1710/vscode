@@ -281,7 +281,7 @@ class AICustomizationManagementActionsContribution extends Disposable implements
 				const editorGroupsService = accessor.get(IEditorGroupsService);
 				const input = AICustomizationManagementEditorInput.getOrCreate();
 				const pane = await editorGroupsService.activeGroup.openEditor(input, { pinned: true });
-				if (section && pane && typeof (pane as Record<string, unknown>).selectSectionById === 'function') {
+				if (section && pane && typeof (pane as unknown as Record<string, unknown>).selectSectionById === 'function') {
 					(pane as unknown as { selectSectionById(s: AICustomizationManagementSection): void }).selectSectionById(section);
 				}
 			}
