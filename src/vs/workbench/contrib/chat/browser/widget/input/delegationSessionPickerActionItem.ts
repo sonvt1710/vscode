@@ -15,8 +15,8 @@ import { IContextKeyService } from '../../../../../../platform/contextkey/common
 import { IKeybindingService } from '../../../../../../platform/keybinding/common/keybinding.js';
 import { IOpenerService } from '../../../../../../platform/opener/common/opener.js';
 import { ITelemetryService } from '../../../../../../platform/telemetry/common/telemetry.js';
+import { IsSessionsWindowContext } from '../../../../../common/contextkeys.js';
 import { IChatSessionsService } from '../../../common/chatSessionsService.js';
-import { IWorkbenchEnvironmentService } from '../../../../../services/environment/common/environmentService.js';
 import { ACTION_ID_NEW_CHAT } from '../../actions/chatActions.js';
 import { AgentSessionProviders, getAgentCanContinueIn, getAgentSessionProvider, isFirstPartyAgentSessionProvider } from '../../agentSessions/agentSessions.js';
 import { ISessionTypePickerDelegate } from '../../chat.js';
@@ -28,6 +28,8 @@ import { ISessionTypeItem, SessionTypePickerActionItem } from './sessionTargetPi
  * This picker allows switching to remote execution providers when the session is not empty.
  */
 export class DelegationSessionPickerActionItem extends SessionTypePickerActionItem {
+
+	private readonly _isSessionsWindow: boolean;
 
 	constructor(
 		action: MenuItemAction,
@@ -41,9 +43,9 @@ export class DelegationSessionPickerActionItem extends SessionTypePickerActionIt
 		@ICommandService commandService: ICommandService,
 		@IOpenerService openerService: IOpenerService,
 		@ITelemetryService telemetryService: ITelemetryService,
-		@IWorkbenchEnvironmentService private readonly environmentService: IWorkbenchEnvironmentService,
 	) {
 		super(action, chatSessionPosition, delegate, pickerOptions, actionWidgetService, keybindingService, contextKeyService, chatSessionsService, commandService, openerService, telemetryService);
+		this._isSessionsWindow = IsSessionsWindowContext.getValue(contextKeyService) === true;
 	}
 
 	protected override _run(sessionTypeItem: ISessionTypeItem): void {
@@ -76,7 +78,7 @@ export class DelegationSessionPickerActionItem extends SessionTypePickerActionIt
 
 	protected override _isVisible(type: AgentSessionProviders): boolean {
 		// In the sessions window, only show Background and Cloud targets
-		if (this.environmentService.isSessionsWindow && type === AgentSessionProviders.Local) {
+		if (this._isSessionsWindow && type === AgentSessionProviders.Local) {
 			return false;
 		}
 
@@ -109,7 +111,7 @@ export class DelegationSessionPickerActionItem extends SessionTypePickerActionIt
 	}
 
 	protected override _getAdditionalActions(): IActionWidgetDropdownAction[] {
-		if (this.environmentService.isSessionsWindow) {
+		if (this._isSessionsWindow) {
 			return [];
 		}
 		return [{
