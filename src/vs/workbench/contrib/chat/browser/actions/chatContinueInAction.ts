@@ -36,7 +36,7 @@ import { ChatSendResult, IChatService } from '../../common/chatService/chatServi
 import { IChatSessionsExtensionPoint, IChatSessionsService } from '../../common/chatSessionsService.js';
 import { ChatAgentLocation } from '../../common/constants.js';
 import { PROMPT_LANGUAGE_ID } from '../../common/promptSyntax/promptTypes.js';
-import { AgentSessionProviders, getAgentSessionProviderIcon, getAgentSessionProviderName } from '../agentSessions/agentSessions.js';
+import { AgentSessionProviders, getAgentSessionProvider, getAgentSessionProviderIcon, getAgentSessionProviderName } from '../agentSessions/agentSessions.js';
 import { IChatWidget, IChatWidgetService } from '../chat.js';
 import { ctxHasEditorModification } from '../chatEditing/chatEditingEditorContextKeys.js';
 import { CHAT_SETUP_ACTION_ID } from './chatActions.js';
@@ -278,10 +278,21 @@ export class CreateRemoteAgentJobAction {
 				}
 			}
 
+			const continuationTargetType = continuationTarget.type;
+
+			// When source and target session types differ, open a new session of
+			// the target type with the prompt and context instead of sending to
+			// the current (incompatible) session resource.
+			const sourceProvider = getAgentSessionProvider(sessionResource);
+			if (sourceProvider && sourceProvider !== continuationTargetType) {
+				console.log(`[Delegation] CreateRemoteAgentJobAction: cross-type delegation (${sourceProvider} -> ${continuationTargetType}), opening new session`);
+				await commandService.executeCommand(`${NEW_CHAT_SESSION_ACTION_ID}.${continuationTargetType}`, { prompt: userPrompt, attachedContext: attachedContext.asArray() });
+				return;
+			}
+
 			const defaultAgent = chatAgentService.getDefaultAgent(ChatAgentLocation.Chat);
 			const instantiationService = accessor.get(IInstantiationService);
 			const requestParser = instantiationService.createInstance(ChatRequestParser);
-			const continuationTargetType = continuationTarget.type;
 
 			console.log(`[Delegation] CreateRemoteAgentJobAction: sending request with agentIdSilent=${continuationTargetType}, defaultAgent=${defaultAgent?.id}`);
 
