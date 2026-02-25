@@ -290,7 +290,13 @@ export class SessionsConfigurationService extends Disposable implements ISession
 
 	private _resolveCommand(task: ITaskEntry): string | undefined {
 		if (task.type === 'npm') {
-			return task.script ? `npm run ${task.script}` : undefined;
+			if (!task.script) {
+				return undefined;
+			}
+			if (task.path) {
+				return `npm --prefix ${task.path} run ${task.script}`;
+			}
+			return `npm run ${task.script}`;
 		}
 		if (isWindows && task.windows?.command) {
 			return task.windows.command;
