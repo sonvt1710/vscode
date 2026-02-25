@@ -92,6 +92,13 @@ export interface ISessionTypePickerDelegate {
 	 */
 	setPendingDelegationTarget?(provider: AgentSessionProviders): void;
 	/**
+	 * Optional getter for the set of allowed session targets.
+	 * When provided, the session target and delegation pickers will only show targets
+	 * in this set. This allows host contexts (e.g. the agent sessions window) to restrict
+	 * visible targets without adding host-specific dependencies to chat core.
+	 */
+	getAllowedTargets?(): ReadonlySet<AgentSessionProviders> | undefined;
+	/**
 	 * Optional event that fires when the active session provider changes.
 	 * When provided, listeners (like chatInputPart) can react to session type changes
 	 * and update pickers accordingly.
@@ -271,6 +278,14 @@ export interface IChatWidgetViewOptions {
 	 * immediately open a new session.
 	 */
 	sessionTypePickerDelegate?: ISessionTypePickerDelegate;
+
+	/**
+	 * Optional set of allowed session targets for the pickers.
+	 * When provided, only targets in this set will be visible in the session target
+	 * and delegation pickers. This allows host contexts (e.g. the agent sessions window)
+	 * to restrict the available targets.
+	 */
+	allowedSessionTargets?: ReadonlySet<AgentSessionProviders>;
 
 	/**
 	 * Optional delegate for the workspace picker.

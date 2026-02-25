@@ -50,6 +50,11 @@ export class DelegationSessionPickerActionItem extends SessionTypePickerActionIt
 	}
 
 	protected override _isVisible(type: AgentSessionProviders): boolean {
+		const allowedTargets = this.delegate.getAllowedTargets?.();
+		if (allowedTargets && !allowedTargets.has(type)) {
+			return false;
+		}
+
 		if (this.delegate.getActiveSessionProvider() === type) {
 			return true; // Always show active session type
 		}

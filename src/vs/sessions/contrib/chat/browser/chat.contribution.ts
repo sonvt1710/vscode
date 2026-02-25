@@ -37,6 +37,17 @@ import { ViewPaneContainer } from '../../../../workbench/browser/parts/views/vie
 import { registerIcon } from '../../../../platform/theme/common/iconRegistry.js';
 import { ChatViewPane } from '../../../../workbench/contrib/chat/browser/widgetHosts/viewPane/chatViewPane.js';
 
+/**
+ * Sessions-window subclass of {@link ChatViewPane} that restricts the session
+ * target and delegation pickers to only show targets supported by the agent
+ * sessions window (Local and Cloud).
+ */
+class SessionsChatViewPane extends ChatViewPane {
+	protected override getAllowedSessionTargets(): ReadonlySet<AgentSessionProviders> {
+		return new Set([AgentSessionProviders.Local, AgentSessionProviders.Cloud]);
+	}
+}
+
 export class OpenSessionWorktreeInVSCodeAction extends Action2 {
 	static readonly ID = 'chat.openSessionWorktreeInVSCode';
 
@@ -201,7 +212,7 @@ class RegisterChatViewContainerContribution implements IWorkbenchContribution {
 			name: localize2('chat.viewContainer.label', "Chat"),
 			canToggleVisibility: false,
 			canMoveView: false,
-			ctorDescriptor: new SyncDescriptor(ChatViewPane),
+			ctorDescriptor: new SyncDescriptor(SessionsChatViewPane),
 			when: IsNewChatSessionContext.negate(),
 			windowVisibility: WindowVisibility.Sessions
 		}, {

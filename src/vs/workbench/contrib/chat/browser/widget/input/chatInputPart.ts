@@ -160,6 +160,12 @@ export interface IChatInputPartOptions {
 	 */
 	sessionTypePickerDelegate?: ISessionTypePickerDelegate;
 	/**
+	 * Optional set of allowed session targets for the pickers.
+	 * When provided, only targets in this set will be visible in the session target
+	 * and delegation pickers.
+	 */
+	allowedSessionTargets?: ReadonlySet<AgentSessionProviders>;
+	/**
 	 * Optional delegate for the workspace picker.
 	 * When provided, shows a workspace picker allowing users to select a target workspace
 	 * for their chat request. This is useful for empty window contexts.
@@ -2199,6 +2205,7 @@ export class ChatInputPart extends Disposable implements IHistoryNavigationWidge
 						const sessionResource = this._widget?.viewModel?.sessionResource;
 						return sessionResource ? getAgentSessionProvider(sessionResource) : undefined;
 					};
+					const allowedSessionTargets = this.options.allowedSessionTargets;
 					const delegate: ISessionTypePickerDelegate = this.options.sessionTypePickerDelegate ?? {
 						getActiveSessionProvider: () => {
 							return getActiveSessionType();
@@ -2213,6 +2220,7 @@ export class ChatInputPart extends Disposable implements IHistoryNavigationWidge
 							this.updateAgentSessionTypeContextKey();
 							this.refreshChatSessionPickers();
 						},
+						getAllowedTargets: allowedSessionTargets ? () => allowedSessionTargets : undefined,
 					};
 					const isWelcomeViewMode = !!this.options.sessionTypePickerDelegate?.setActiveSessionProvider;
 					const Picker = (action.id === OpenSessionTargetPickerAction.ID || isWelcomeViewMode) ? SessionTypePickerActionItem : DelegationSessionPickerActionItem;

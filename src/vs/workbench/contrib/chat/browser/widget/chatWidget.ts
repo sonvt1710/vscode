@@ -1832,6 +1832,7 @@ export class ChatWidget extends Disposable implements IChatWidget {
 			widgetViewKindTag: this.getWidgetViewKindTag(),
 			defaultMode: this.viewOptions.defaultMode,
 			sessionTypePickerDelegate: this.viewOptions.sessionTypePickerDelegate,
+			allowedSessionTargets: this.viewOptions.allowedSessionTargets,
 			workspacePickerDelegate: this.viewOptions.workspacePickerDelegate,
 		};
 
