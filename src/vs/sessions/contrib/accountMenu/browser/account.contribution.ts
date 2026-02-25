@@ -228,8 +228,15 @@ export class UpdateWidget extends ActionViewItem {
 		} else {
 			this.updateButton.enabled = true;
 			this.updateButton.label = `$(${Codicon.debugRestart.id}) ${localize('update', "Update")}`;
-			const color = asCssVariable(sessionsUpdateButtonDownloadedBackground);
-			this.updateButton.element.style.backgroundImage = `linear-gradient(to right, ${color} 100%, transparent 100%)`;
+
+			const el = this.updateButton.element;
+			if (state.type === StateType.Ready) {
+				const color = asCssVariable(sessionsUpdateButtonDownloadedBackground);
+				el.style.backgroundImage = `linear-gradient(to right, ${color} 100%, transparent 100%)`;
+			} else {
+				// Ensure non-update states (e.g. Idle, Disabled, Uninitialized) do not look like a completed download
+				el.style.backgroundImage = '';
+			}
 		}
 	}
 
