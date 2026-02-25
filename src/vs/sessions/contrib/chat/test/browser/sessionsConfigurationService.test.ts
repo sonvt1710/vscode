@@ -52,6 +52,7 @@ suite('SessionsConfigurationService', () => {
 	let sentCommands: { command: string }[];
 	let committedFiles: { session: IActiveSessionItem; fileUris: URI[] }[];
 	let storageService: InMemoryStorageService;
+	let readFileCalls: URI[];
 
 	const userSettingsUri = URI.parse('file:///user/settings.json');
 	const repoUri = URI.parse('file:///repo');
@@ -63,11 +64,13 @@ suite('SessionsConfigurationService', () => {
 		createdTerminals = [];
 		sentCommands = [];
 		committedFiles = [];
+		readFileCalls = [];
 
 		const instantiationService = store.add(new TestInstantiationService());
 
 		instantiationService.stub(IFileService, new class extends mock<IFileService>() {
 			override async readFile(resource: URI) {
+				readFileCalls.push(resource);
 				const content = fileContents.get(resource.toString());
 				if (content === undefined) {
 					throw new Error('file not found');
@@ -175,6 +178,28 @@ suite('SessionsConfigurationService', () => {
 
 		await new Promise(r => setTimeout(r, 10));
 		assert.deepStrictEqual(obs.get().map(t => t.label), ['serve']);
+	});
+
+	test('getSessionTasks does not re-read files on repeated calls for the same folder', async () => {
+		const worktreeTasksUri = URI.parse('file:///worktree/.vscode/tasks.json');
+		const userTasksUri = URI.from({ scheme: userSettingsUri.scheme, path: '/user/tasks.json' });
+		fileContents.set(worktreeTasksUri.toString(), tasksJsonContent([
+			makeTask('build', 'npm run build', true),
+		]));
+		fileContents.set(userTasksUri.toString(), tasksJsonContent([]));
+
+		const session = makeSession({ worktree: worktreeUri, repository: repoUri });
+
+		// Call getSessionTasks multiple times for the same session/folder
+		service.getSessionTasks(session);
+		service.getSessionTasks(session);
+		service.getSessionTasks(session);
+
+		await new Promise(r => setTimeout(r, 10));
+
+		// _refreshSessionTasks reads two files (workspace + user tasks.json).
+		// If refresh triggered more than once, we'd see > 2 reads.
+		assert.strictEqual(readFileCalls.length, 2, 'should read files only once (no duplicate refresh)');
 	});
 
 	// --- getNonSessionTasks ---
