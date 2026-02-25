@@ -226,21 +226,26 @@ export class CreateRemoteAgentJobAction {
 			remoteJobCreatingKey.set(true);
 
 			const widget = _widget ?? widgetService.lastFocusedWidget;
+			console.log(`[Delegation] CreateRemoteAgentJobAction: widget=${!!widget}, viewModel=${!!widget?.viewModel}, continuationTarget=${continuationTarget.type}`);
 			if (!widget || !widget.viewModel) {
+				console.log(`[Delegation] CreateRemoteAgentJobAction: no widget/viewModel, opening untitled editor`);
 				return this.openUntitledEditor(commandService, continuationTarget);
 			}
 
 			// todo@connor4312: remove 'as' cast
 			const chatModel = widget.viewModel.model as ChatModel;
 			if (!chatModel) {
+				console.log(`[Delegation] CreateRemoteAgentJobAction: no chatModel, returning`);
 				return;
 			}
 
 			const sessionResource = widget.viewModel.sessionResource;
 			const chatRequests = chatModel.getRequests();
 			let userPrompt = widget.getInput();
+			console.log(`[Delegation] CreateRemoteAgentJobAction: sessionResource=${sessionResource.toString()}, requestCount=${chatRequests.length}, userPrompt="${userPrompt?.substring(0, 50)}"`);
 			if (!userPrompt) {
 				if (!chatRequests.length) {
+					console.log(`[Delegation] CreateRemoteAgentJobAction: no prompt and no requests, opening untitled editor`);
 					return this.openUntitledEditor(commandService, continuationTarget);
 				}
 				userPrompt = 'implement this.';
@@ -278,6 +283,8 @@ export class CreateRemoteAgentJobAction {
 			const requestParser = instantiationService.createInstance(ChatRequestParser);
 			const continuationTargetType = continuationTarget.type;
 
+			console.log(`[Delegation] CreateRemoteAgentJobAction: sending request with agentIdSilent=${continuationTargetType}, defaultAgent=${defaultAgent?.id}`);
+
 			// Add the request to the model first
 			const parsedRequest = requestParser.parseChatRequest(sessionResource, userPrompt, ChatAgentLocation.Chat);
 			const addedRequest = chatModel.addRequest(
@@ -296,11 +303,13 @@ export class CreateRemoteAgentJobAction {
 				...widget.getModeRequestOptions()
 			});
 
+			console.log(`[Delegation] CreateRemoteAgentJobAction: sendResult kind=${sendResult?.kind}, agent=${ChatSendResult.isSent(sendResult) ? sendResult.data.agent?.id : 'n/a'}`);
+
 			if (ChatSendResult.isSent(sendResult)) {
 				await widget.handleDelegationExitIfNeeded(defaultAgent, sendResult.data.agent);
 			}
 		} catch (e) {
-			console.error('Error creating remote coding agent job', e);
+			console.error('[Delegation] Error creating remote coding agent job', e);
 			throw e;
 		} finally {
 			remoteJobCreatingKey.set(false);

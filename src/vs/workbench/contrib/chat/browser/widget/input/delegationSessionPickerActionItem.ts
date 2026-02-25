@@ -49,6 +49,7 @@ export class DelegationSessionPickerActionItem extends SessionTypePickerActionIt
 	}
 
 	protected override _run(sessionTypeItem: ISessionTypeItem): void {
+		console.log(`[Delegation] DelegationPicker._run: setting pending target to ${sessionTypeItem.type}, hasSetter=${!!this.delegate.setPendingDelegationTarget}`);
 		if (this.delegate.setPendingDelegationTarget) {
 			this.delegate.setPendingDelegationTarget(sessionTypeItem.type);
 		}
