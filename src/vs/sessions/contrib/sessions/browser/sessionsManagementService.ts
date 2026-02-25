@@ -82,8 +82,10 @@ export interface ISessionsManagementService {
 	/**
 	 * Open a new session, apply options, and send the initial request.
 	 * Looks up the session by resource URI and builds send options from it.
+	 * When `openNewSessionView` is true, opens a new session view after sending
+	 * instead of navigating to the newly created session.
 	 */
-	sendRequestForNewSession(sessionResource: URI): Promise<void>;
+	sendRequestForNewSession(sessionResource: URI, options?: { openNewSessionView?: boolean }): Promise<void>;
 
 	/**
 	 * Commit files in a worktree and refresh the agent sessions model
@@ -265,7 +267,7 @@ export class SessionsManagementService extends Disposable implements ISessionsMa
 		this.logService.info(`[ActiveSessionService] Active session changed (new): ${sessionResource.toString()}, repository: ${repository?.toString() ?? 'none'}`);
 	}
 
-	async sendRequestForNewSession(sessionResource: URI): Promise<void> {
+	async sendRequestForNewSession(sessionResource: URI, options?: { openNewSessionView?: boolean }): Promise<void> {
 		const session = this._newSession.value;
 		if (!session) {
 			this.logService.error(`[SessionsManagementService] No new session found for resource: ${sessionResource.toString()}`);
@@ -299,13 +301,13 @@ export class SessionsManagementService extends Disposable implements ISessionsMa
 		};
 
 		await this.chatSessionsService.getOrCreateChatSession(session.resource, CancellationToken.None);
-		await this.doSendRequestForNewSession(session, query, sendOptions, session.selectedOptions);
+		await this.doSendRequestForNewSession(session, query, sendOptions, session.selectedOptions, options?.openNewSessionView);
 
 		// Clean up the session after sending (setter disposes the previous value)
 		this._newSession.value = undefined;
 	}
 
-	private async doSendRequestForNewSession(session: INewSession, query: string, sendOptions: IChatSendRequestOptions, selectedOptions?: ReadonlyMap<string, IChatSessionProviderOptionItem>): Promise<void> {
+	private async doSendRequestForNewSession(session: INewSession, query: string, sendOptions: IChatSendRequestOptions, selectedOptions?: ReadonlyMap<string, IChatSessionProviderOptionItem>, openNewSessionView?: boolean): Promise<void> {
 		// 1. Open the session - loads the model and shows the ChatViewPane
 		await this.openSession(session.resource);
 
@@ -362,7 +364,11 @@ export class SessionsManagementService extends Disposable implements ISessionsMa
 		}
 
 		if (newSession) {
-			this.setActiveSession(newSession);
+			if (openNewSessionView) {
+				this.openNewSessionView();
+			} else {
+				this.setActiveSession(newSession);
+			}
 		}
 	}
 
