@@ -17,14 +17,12 @@ import { IAgentFeedbackService } from './agentFeedbackService.js';
 import { IChatEditingService } from '../../../../workbench/contrib/chat/common/editing/chatEditingService.js';
 import { IAgentSessionsService } from '../../../../workbench/contrib/chat/browser/agentSessions/agentSessionsService.js';
 import { getSessionForResource } from './agentFeedbackEditorUtils.js';
-import { submitFeedbackActionId } from './agentFeedbackEditorActions.js';
 import { localize } from '../../../../nls.js';
 import { ActionBar } from '../../../../base/browser/ui/actionbar/actionbar.js';
 import { Action } from '../../../../base/common/actions.js';
 import { Codicon } from '../../../../base/common/codicons.js';
 import { ThemeIcon } from '../../../../base/common/themables.js';
 import { Emitter, Event } from '../../../../base/common/event.js';
-import { ICommandService } from '../../../../platform/commands/common/commands.js';
 
 class AgentFeedbackInputWidget implements IOverlayWidget {
 
@@ -205,7 +203,6 @@ export class AgentFeedbackEditorInputContribution extends Disposable implements 
 		@IAgentFeedbackService private readonly _agentFeedbackService: IAgentFeedbackService,
 		@IChatEditingService private readonly _chatEditingService: IChatEditingService,
 		@IAgentSessionsService private readonly _agentSessionsService: IAgentSessionsService,
-		@ICommandService private readonly _commandService: ICommandService,
 	) {
 		super();
 
@@ -432,9 +429,25 @@ export class AgentFeedbackEditorInputContribution extends Disposable implements 
 	}
 
 	private _addFeedbackAndSubmit(): void {
-		if (this._addFeedback()) {
-			this._commandService.executeCommand(submitFeedbackActionId);
+		if (!this._widget) {
+			return;
 		}
+
+		const text = this._widget.inputElement.value.trim();
+		if (!text) {
+			return;
+		}
+
+		const selection = this._editor.getSelection();
+		const model = this._editor.getModel();
+		if (!selection || !model || !this._sessionResource) {
+			return;
+		}
+
+		const sessionResource = this._sessionResource;
+		this._hide();
+		this._editor.focus();
+		this._agentFeedbackService.addFeedbackAndSubmit(sessionResource, model.uri, selection, text);
 	}
 
 	private _updatePosition(): void {
