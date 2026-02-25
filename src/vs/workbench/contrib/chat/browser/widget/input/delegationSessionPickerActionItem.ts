@@ -109,6 +109,9 @@ export class DelegationSessionPickerActionItem extends SessionTypePickerActionIt
 	}
 
 	protected override _getAdditionalActions(): IActionWidgetDropdownAction[] {
+		if (this.environmentService.isSessionsWindow) {
+			return [];
+		}
 		return [{
 			id: 'newChatSession',
 			class: undefined,
