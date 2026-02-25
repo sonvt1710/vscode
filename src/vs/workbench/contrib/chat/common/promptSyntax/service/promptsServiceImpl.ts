@@ -231,6 +231,10 @@ export class PromptsService extends Disposable implements IPromptsService {
 			PromptsType.skill,
 			(plugin, reader) => plugin.skills.read(reader),
 		));
+		this._register(this.watchPluginPromptFilesForType(
+			PromptsType.agent,
+			(plugin, reader) => plugin.agents.read(reader),
+		));
 
 		this._register(autorun(reader => {
 			const plugins = this.agentPluginService.plugins.read(reader);
