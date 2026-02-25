@@ -251,8 +251,7 @@ export class CreateRemoteAgentJobAction {
 	 * Extracts the GitHub "owner/repo" NWO from the source session by checking
 	 * multiple data sources: chat model repoData, session metadata, and session options.
 	 */
-	private async extractRepoNwoFromSession(accessor: ServicesAccessor, sessionResource: URI, chatModel: ChatModel): Promise<string | undefined> {
-		const fileService = accessor.get(IFileService);
+	private async extractRepoNwoFromSession(agentSessionsService: IAgentSessionsService, chatSessionsService: IChatSessionsService, fileService: IFileService, sessionResource: URI, chatModel: ChatModel): Promise<string | undefined> {
 		// 1. Try chat model's repoData (populated when local git repo exists)
 		const repoData = chatModel.repoData;
 		console.log(`[Delegation] extractRepoNwo: repoData=${JSON.stringify(repoData ? { remoteUrl: repoData.remoteUrl, workspaceType: repoData.workspaceType } : null)}`);
@@ -264,7 +263,6 @@ export class CreateRemoteAgentJobAction {
 		}
 
 		// 2. Try agent session metadata (populated by session providers)
-		const agentSessionsService = accessor.get(IAgentSessionsService);
 		const agentSession = agentSessionsService.getSession(sessionResource);
 		console.log(`[Delegation] extractRepoNwo: agentSession=${!!agentSession}, metadata=${JSON.stringify(agentSession?.metadata)}`);
 		if (agentSession?.metadata) {
@@ -303,7 +301,6 @@ export class CreateRemoteAgentJobAction {
 		}
 
 		// 3. Try session options (repository picker selection)
-		const chatSessionsService = accessor.get(IChatSessionsService);
 		// Cloud sessions use 'repositories', sessions window uses 'repository'
 		for (const optionId of ['repositories', 'repository']) {
 			const repoOption = chatSessionsService.getSessionOption(sessionResource, optionId);
@@ -351,6 +348,9 @@ export class CreateRemoteAgentJobAction {
 		const chatAgentService = accessor.get(IChatAgentService);
 		const chatService = accessor.get(IChatService);
 		const editorService = accessor.get(IEditorService);
+		const agentSessionsService = accessor.get(IAgentSessionsService);
+		const chatSessionsService = accessor.get(IChatSessionsService);
+		const fileService = accessor.get(IFileService);
 
 		const remoteJobCreatingKey = ChatContextKeys.remoteJobCreating.bindTo(contextKeyService);
 
@@ -435,7 +435,7 @@ export class CreateRemoteAgentJobAction {
 
 				// Extract repository info from the source session to pass to the target session
 				const initialSessionOptions: { optionId: string; value: string }[] = [];
-				const repoNwo = await this.extractRepoNwoFromSession(accessor, sessionResource, chatModel);
+				const repoNwo = await this.extractRepoNwoFromSession(agentSessionsService, chatSessionsService, fileService, sessionResource, chatModel);
 				if (repoNwo) {
 					initialSessionOptions.push({ optionId: 'repositories', value: repoNwo });
 				}
