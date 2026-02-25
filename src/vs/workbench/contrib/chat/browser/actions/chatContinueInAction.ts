@@ -58,12 +58,38 @@ function extractNwoFromRemoteUrl(remoteUrl: string): string | undefined {
 
 /**
  * Resolves GitHub NWO from a local git repository path by reading `.git/config`.
+ * Handles both regular repos and git worktrees.
  */
 async function resolveGitRemoteNwo(repoPath: string, fileService: IFileService): Promise<string | undefined> {
 	try {
-		// Try reading .git/config from the repo path
-		const gitConfigUri = URI.file(`${repoPath}/.git/config`);
-		const content = await fileService.readFile(gitConfigUri);
+		const gitPath = `${repoPath}/.git`;
+		const gitUri = URI.file(gitPath);
+
+		let configUri: URI;
+		try {
+			const stat = await fileService.stat(gitUri);
+			if (stat.isDirectory) {
+				// Regular git repo
+				configUri = URI.file(`${gitPath}/config`);
+			} else {
+				// Git worktree — .git is a file with "gitdir: <path>"
+				const gitFile = await fileService.readFile(gitUri);
+				const gitDir = gitFile.value.toString().trim().replace(/^gitdir:\s*/, '');
+				// Resolve relative paths
+				const resolvedGitDir = gitDir.startsWith('/')
+					? gitDir
+					: `${repoPath}/${gitDir}`;
+				// The config is in the common dir (parent of worktree git dirs)
+				// e.g., gitdir points to /repo/.git/worktrees/name, config is at /repo/.git/config
+				const commonDir = resolvedGitDir.replace(/\/worktrees\/[^/]+$/, '');
+				configUri = URI.file(`${commonDir}/config`);
+			}
+		} catch {
+			// .git doesn't exist
+			return undefined;
+		}
+
+		const content = await fileService.readFile(configUri);
 		const configText = content.value.toString();
 
 		// Parse remote "origin" URL from git config
