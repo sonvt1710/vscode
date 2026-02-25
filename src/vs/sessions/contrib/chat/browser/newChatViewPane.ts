@@ -386,6 +386,11 @@ class NewChatWidget extends Disposable {
 				e.stopPropagation();
 				this._send();
 			}
+			if (e.keyCode === KeyCode.Enter && !e.shiftKey && !e.ctrlKey && e.altKey) {
+				e.preventDefault();
+				e.stopPropagation();
+				this._send(/* openNewAfterSend */ true);
+			}
 		}));
 
 		this._register(this._editor.onDidContentSizeChange(() => {
@@ -776,7 +781,7 @@ class NewChatWidget extends Disposable {
 		this._sendButton.enabled = !this._sending && hasText && !(this._newSession.value?.disabled ?? true);
 	}
 
-	private _send(): void {
+	private _send(openNewAfterSend = false): void {
 		const query = this._editor.getModel()?.getValue().trim();
 		const session = this._newSession.value;
 		if (!query || !session || session.disabled || this._sending) {
@@ -800,6 +805,9 @@ class NewChatWidget extends Disposable {
 			this._newSession.clearAndLeak();
 			this._newSessionListener.clear();
 			this._contextAttachments.clear();
+			if (openNewAfterSend) {
+				this.sessionsManagementService.openNewSessionView();
+			}
 		}, e => {
 			this.logService.error('Failed to send request:', e);
 		}).finally(() => {
