@@ -52,6 +52,6 @@ export const chatBarTitleForeground = registerColor(
 // Agent feedback input widget border color
 export const agentFeedbackInputWidgetBorder = registerColor(
 	'agentFeedbackInputWidget.border',
-	{ dark: transparent(iconForeground, 0.4), light: transparent(iconForeground, 0.4), hcDark: contrastBorder, hcLight: contrastBorder },
+	{ dark: transparent(iconForeground, 0.8), light: transparent(iconForeground, 0.8), hcDark: contrastBorder, hcLight: contrastBorder },
 	localize('agentFeedbackInputWidget.border', 'Border color of the agent feedback input widget shown in the editor.')
 );
