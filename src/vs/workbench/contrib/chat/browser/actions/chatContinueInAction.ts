@@ -289,8 +289,20 @@ export class CreateRemoteAgentJobAction {
 				const actionId = isSidebar
 					? `workbench.action.chat.openNewSessionSidebar.${continuationTargetType}`
 					: `${NEW_CHAT_SESSION_ACTION_ID}.${continuationTargetType}`;
+
+				// Build conversation transcript from the source session to preserve context
+				const transcript = chatRequests.map(req => {
+					const userMsg = `User: ${req.message.text}`;
+					const respMsg = req.response?.response ? `Assistant: ${req.response.response.getMarkdown()}` : '';
+					return respMsg ? `${userMsg}\n${respMsg}` : userMsg;
+				}).join('\n\n');
+
+				const delegationPrompt = transcript
+					? `The following is the conversation history from a previous ${getAgentSessionProviderName(sourceProvider)} session. Continue working on it.\n\n${transcript}\n\nUser: ${userPrompt}`
+					: userPrompt;
+
 				console.log(`[Delegation] CreateRemoteAgentJobAction: cross-type delegation (${sourceProvider} -> ${continuationTargetType}), isSidebar=${isSidebar}`);
-				await commandService.executeCommand(actionId, { prompt: userPrompt, attachedContext: attachedContext.asArray() });
+				await commandService.executeCommand(actionId, { prompt: delegationPrompt, attachedContext: attachedContext.asArray() });
 				return;
 			}
 
