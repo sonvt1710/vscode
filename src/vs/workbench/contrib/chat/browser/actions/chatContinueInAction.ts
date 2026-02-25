@@ -280,7 +280,6 @@ export class CreateRemoteAgentJobAction {
 	private async extractRepoNwoFromSession(agentSessionsService: IAgentSessionsService, chatSessionsService: IChatSessionsService, fileService: IFileService, sessionResource: URI, chatModel: ChatModel): Promise<string | undefined> {
 		// 1. Try chat model's repoData (populated when local git repo exists)
 		const repoData = chatModel.repoData;
-		console.log(`[Delegation] extractRepoNwo: repoData=${JSON.stringify(repoData ? { remoteUrl: repoData.remoteUrl, workspaceType: repoData.workspaceType } : null)}`);
 		if (repoData?.remoteUrl) {
 			const nwo = extractNwoFromRemoteUrl(repoData.remoteUrl);
 			if (nwo) {
@@ -290,7 +289,6 @@ export class CreateRemoteAgentJobAction {
 
 		// 2. Try agent session metadata (populated by session providers)
 		const agentSession = agentSessionsService.getSession(sessionResource);
-		console.log(`[Delegation] extractRepoNwo: agentSession=${!!agentSession}, metadata=${JSON.stringify(agentSession?.metadata)}`);
 		if (agentSession?.metadata) {
 			const metadata = agentSession.metadata;
 
@@ -384,26 +382,21 @@ export class CreateRemoteAgentJobAction {
 			remoteJobCreatingKey.set(true);
 
 			const widget = _widget ?? widgetService.lastFocusedWidget;
-			console.log(`[Delegation] CreateRemoteAgentJobAction: widget=${!!widget}, viewModel=${!!widget?.viewModel}, continuationTarget=${continuationTarget.type}`);
 			if (!widget || !widget.viewModel) {
-				console.log(`[Delegation] CreateRemoteAgentJobAction: no widget/viewModel, opening untitled editor`);
 				return this.openUntitledEditor(commandService, continuationTarget);
 			}
 
 			// todo@connor4312: remove 'as' cast
 			const chatModel = widget.viewModel.model as ChatModel;
 			if (!chatModel) {
-				console.log(`[Delegation] CreateRemoteAgentJobAction: no chatModel, returning`);
 				return;
 			}
 
 			const sessionResource = widget.viewModel.sessionResource;
 			const chatRequests = chatModel.getRequests();
 			let userPrompt = widget.getInput();
-			console.log(`[Delegation] CreateRemoteAgentJobAction: sessionResource=${sessionResource.toString()}, requestCount=${chatRequests.length}, userPrompt="${userPrompt?.substring(0, 50)}"`);
 			if (!userPrompt) {
 				if (!chatRequests.length) {
-					console.log(`[Delegation] CreateRemoteAgentJobAction: no prompt and no requests, opening untitled editor`);
 					return this.openUntitledEditor(commandService, continuationTarget);
 				}
 				userPrompt = 'implement this.';
@@ -466,7 +459,6 @@ export class CreateRemoteAgentJobAction {
 					initialSessionOptions.push({ optionId: 'repositories', value: repoNwo });
 				}
 
-				console.log(`[Delegation] CreateRemoteAgentJobAction: cross-type delegation (${sourceProvider} -> ${continuationTargetType}), isSidebar=${isSidebar}, repoNwo=${repoNwo}`);
 				await commandService.executeCommand(actionId, {
 					prompt: delegationPrompt,
 					attachedContext: attachedContext.asArray(),
@@ -478,8 +470,6 @@ export class CreateRemoteAgentJobAction {
 			const defaultAgent = chatAgentService.getDefaultAgent(ChatAgentLocation.Chat);
 			const instantiationService = accessor.get(IInstantiationService);
 			const requestParser = instantiationService.createInstance(ChatRequestParser);
-
-			console.log(`[Delegation] CreateRemoteAgentJobAction: sending request with agentIdSilent=${continuationTargetType}, defaultAgent=${defaultAgent?.id}`);
 
 			// Add the request to the model first
 			const parsedRequest = requestParser.parseChatRequest(sessionResource, userPrompt, ChatAgentLocation.Chat);
@@ -498,8 +488,6 @@ export class CreateRemoteAgentJobAction {
 				userSelectedModelId: widget.input.currentLanguageModel,
 				...widget.getModeRequestOptions()
 			});
-
-			console.log(`[Delegation] CreateRemoteAgentJobAction: sendResult kind=${sendResult?.kind}, agent=${ChatSendResult.isSent(sendResult) ? sendResult.data.agent?.id : 'n/a'}`);
 
 			if (ChatSendResult.isSent(sendResult)) {
 				await widget.handleDelegationExitIfNeeded(defaultAgent, sendResult.data.agent);

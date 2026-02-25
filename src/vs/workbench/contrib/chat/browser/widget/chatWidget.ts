@@ -1398,11 +1398,10 @@ export class ChatWidget extends Disposable implements IChatWidget {
 
 	async handleDelegationExitIfNeeded(sourceAgent: Pick<IChatAgentData, 'id' | 'name'> | undefined, targetAgent: IChatAgentData | undefined): Promise<void> {
 		if (!this._shouldExitAfterDelegation(sourceAgent, targetAgent)) {
-			console.log(`[Delegation] handleDelegationExitIfNeeded: skipping exit, sourceAgent=${sourceAgent?.id}, targetAgent=${targetAgent?.id}`);
 			return;
 		}
 
-		console.log(`[Delegation] Will exit after delegation: sourceAgent=${sourceAgent?.id}, targetAgent=${targetAgent?.id}`);
+		this.logService.debug(`[Delegation] Will exit after delegation: sourceAgent=${sourceAgent?.id}, targetAgent=${targetAgent?.id}`);
 		try {
 			await this._handleDelegationExit();
 		} catch (e) {
@@ -1412,41 +1411,39 @@ export class ChatWidget extends Disposable implements IChatWidget {
 
 	private _shouldExitAfterDelegation(sourceAgent: Pick<IChatAgentData, 'id' | 'name'> | undefined, targetAgent: IChatAgentData | undefined): boolean {
 		if (!targetAgent) {
-			console.log('[Delegation] _shouldExitAfterDelegation: false (no targetAgent)');
+			this.logService.debug('[Delegation] _shouldExitAfterDelegation: false (no targetAgent)');
 			return false;
 		}
 
 		if (!this.configurationService.getValue<boolean>(ChatConfiguration.ExitAfterDelegation)) {
-			console.log('[Delegation] _shouldExitAfterDelegation: false (ExitAfterDelegation config disabled)');
+			this.logService.debug('[Delegation] _shouldExitAfterDelegation: false (ExitAfterDelegation config disabled)');
 			return false;
 		}
 
 		// Never exit if the source and target are the same (that means that you're providing a follow up, etc.)
 		// NOTE: sourceAgent would be the chatWidget's 'lockedAgent'
 		if (sourceAgent && sourceAgent.id === targetAgent.id) {
-			console.log('[Delegation] _shouldExitAfterDelegation: false (source and target agents are the same)');
+			this.logService.debug('[Delegation] _shouldExitAfterDelegation: false (source and target agents are the same)');
 			return false;
 		}
 
-		console.log(`[Delegation] _shouldExitAfterDelegation: viewContext=${JSON.stringify(this.viewContext)}, isViewViewContext=${isIChatViewViewContext(this.viewContext)}`);
 		if (!isIChatViewViewContext(this.viewContext)) {
-			console.log('[Delegation] _shouldExitAfterDelegation: false (not in chat view context)');
+			this.logService.debug('[Delegation] _shouldExitAfterDelegation: false (not in chat view context)');
 			return false;
 		}
 
 		const contribution = this.chatSessionsService.getChatSessionContribution(targetAgent.id);
-		console.log(`[Delegation] _shouldExitAfterDelegation: contribution=${contribution?.type}, canDelegate=${contribution?.canDelegate}`);
 		if (!contribution) {
-			console.log(`[Delegation] _shouldExitAfterDelegation: false (no contribution found for targetAgent.id=${targetAgent.id})`);
+			this.logService.debug(`[Delegation] _shouldExitAfterDelegation: false (no contribution found for targetAgent.id=${targetAgent.id})`);
 			return false;
 		}
 
 		if (contribution.canDelegate !== true) {
-			console.log(`[Delegation] _shouldExitAfterDelegation: false (contribution.canDelegate=${contribution.canDelegate}, expected true)`);
+			this.logService.debug(`[Delegation] _shouldExitAfterDelegation: false (contribution.canDelegate=${contribution.canDelegate}, expected true)`);
 			return false;
 		}
 
-		console.log('[Delegation] _shouldExitAfterDelegation: true');
+		this.logService.debug('[Delegation] _shouldExitAfterDelegation: true');
 		return true;
 	}
 

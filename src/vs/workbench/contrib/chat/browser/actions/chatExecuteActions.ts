@@ -59,9 +59,7 @@ abstract class SubmitAction extends Action2 {
 
 		// Check if there's a pending delegation target
 		const pendingDelegationTarget = widget?.input.pendingDelegationTarget;
-		console.log(`[Delegation] SubmitAction: pendingDelegationTarget=${pendingDelegationTarget}, isLocal=${pendingDelegationTarget === AgentSessionProviders.Local}`);
 		if (pendingDelegationTarget && pendingDelegationTarget !== AgentSessionProviders.Local) {
-			console.log(`[Delegation] SubmitAction: delegating to ${pendingDelegationTarget}`);
 			return await this.handleDelegation(accessor, widget, pendingDelegationTarget);
 		}
 
@@ -166,18 +164,14 @@ abstract class SubmitAction extends Action2 {
 
 		// Find the contribution for the delegation target
 		const contributions = chatSessionsService.getAllChatSessionContributions();
-		console.log(`[Delegation] handleDelegation: target=${delegationTarget}, contributions=${contributions.map(c => `${c.type}(canDelegate=${c.canDelegate})`).join(', ')}`);
 		const targetContribution = contributions.find(contrib => {
 			const providerType = getAgentSessionProvider(contrib.type);
 			return providerType === delegationTarget;
 		});
 
 		if (!targetContribution) {
-			console.error(`[Delegation] handleDelegation: No contribution found for delegation target: ${delegationTarget}`);
 			throw new Error(`No contribution found for delegation target: ${delegationTarget}`);
 		}
-
-		console.log(`[Delegation] handleDelegation: found contribution type=${targetContribution.type}, canDelegate=${targetContribution.canDelegate}`);
 
 		if (targetContribution.canDelegate === false) {
 			throw new Error(`The contribution for delegation target: ${delegationTarget} does not support delegation.`);
