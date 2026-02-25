@@ -37,7 +37,7 @@ import { IChatSessionsExtensionPoint, IChatSessionsService } from '../../common/
 import { ChatAgentLocation } from '../../common/constants.js';
 import { PROMPT_LANGUAGE_ID } from '../../common/promptSyntax/promptTypes.js';
 import { AgentSessionProviders, getAgentSessionProvider, getAgentSessionProviderIcon, getAgentSessionProviderName } from '../agentSessions/agentSessions.js';
-import { IChatWidget, IChatWidgetService } from '../chat.js';
+import { IChatWidget, IChatWidgetService, isIChatViewViewContext } from '../chat.js';
 import { ctxHasEditorModification } from '../chatEditing/chatEditingEditorContextKeys.js';
 import { CHAT_SETUP_ACTION_ID } from './chatActions.js';
 import { PromptFileVariableKind, toPromptFileVariableEntry } from '../../common/attachments/chatVariableEntries.js';
@@ -285,8 +285,12 @@ export class CreateRemoteAgentJobAction {
 			// the current (incompatible) session resource.
 			const sourceProvider = getAgentSessionProvider(sessionResource);
 			if (sourceProvider && sourceProvider !== continuationTargetType) {
-				console.log(`[Delegation] CreateRemoteAgentJobAction: cross-type delegation (${sourceProvider} -> ${continuationTargetType}), opening new session`);
-				await commandService.executeCommand(`${NEW_CHAT_SESSION_ACTION_ID}.${continuationTargetType}`, { prompt: userPrompt, attachedContext: attachedContext.asArray() });
+				const isSidebar = isIChatViewViewContext(widget.viewContext);
+				const actionId = isSidebar
+					? `workbench.action.chat.openNewSessionSidebar.${continuationTargetType}`
+					: `${NEW_CHAT_SESSION_ACTION_ID}.${continuationTargetType}`;
+				console.log(`[Delegation] CreateRemoteAgentJobAction: cross-type delegation (${sourceProvider} -> ${continuationTargetType}), isSidebar=${isSidebar}`);
+				await commandService.executeCommand(actionId, { prompt: userPrompt, attachedContext: attachedContext.asArray() });
 				return;
 			}
 
