@@ -375,6 +375,22 @@ export function buildModelPickerItems(
 	return items;
 }
 
+export function getModelPickerAccessibilityProvider() {
+	return {
+		isChecked(element: IActionListItem<IActionWidgetDropdownAction>) {
+			return element.kind === ActionListItemKind.Action ? !!element?.item?.checked : undefined;
+		},
+		getRole: (element: IActionListItem<IActionWidgetDropdownAction>) => {
+			switch (element.kind) {
+				case ActionListItemKind.Action: return 'menuitemradio';
+				case ActionListItemKind.Separator: return 'separator';
+				default: return 'separator';
+			}
+		},
+		getWidgetRole: () => 'menu',
+	} as const;
+}
+
 function createUnavailableModelItem(
 	id: string,
 	entry: IModelControlEntry,
@@ -585,19 +601,7 @@ export class ModelPickerWidget extends Disposable {
 			anchorElement,
 			undefined,
 			[],
-			{
-				isChecked(element) {
-					return element.kind === 'action' && !!element?.item?.checked;
-				},
-				getRole: (e) => {
-					switch (e.kind) {
-						case 'action': return 'menuitemcheckbox';
-						case 'separator': return 'separator';
-						default: return 'separator';
-					}
-				},
-				getWidgetRole: () => 'menu',
-			},
+			getModelPickerAccessibilityProvider(),
 			listOptions
 		);
 	}
