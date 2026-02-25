@@ -23,6 +23,17 @@ import { chatSlashCommandBackground, chatSlashCommandForeground } from '../../..
 import { AICustomizationManagementCommands, AICustomizationManagementSection } from '../../../../workbench/contrib/chat/browser/aiCustomization/aiCustomizationManagement.js';
 
 /**
+ * Static command ID used by completion items to trigger immediate slash command execution,
+ * mirroring the pattern of core's `ChatSubmitAction` for `executeImmediately` commands.
+ */
+export const SESSIONS_EXECUTE_SLASH_COMMAND_ID = 'sessions.chat.executeSlashCommand';
+
+CommandsRegistry.registerCommand(SESSIONS_EXECUTE_SLASH_COMMAND_ID, (_, handler: SlashCommandHandler, slashCommandStr: string) => {
+	handler.tryExecuteSlashCommand(slashCommandStr);
+	handler.clearInput();
+});
+
+/**
  * Minimal slash command descriptor for the sessions new-chat widget.
  * Self-contained copy of the essential fields from core's `IChatSlashData`
  * to avoid a direct dependency on the workbench chat slash command service.
@@ -46,7 +57,6 @@ export class SlashCommandHandler extends Disposable {
 	private static _slashDecosRegistered = false;
 
 	private readonly _slashCommands: ISessionsSlashCommandData[] = [];
-	private readonly _executeSlashCommandId: string;
 
 	constructor(
 		private readonly _editor: CodeEditorWidget,
@@ -56,15 +66,13 @@ export class SlashCommandHandler extends Disposable {
 		@IThemeService private readonly themeService: IThemeService,
 	) {
 		super();
-		const modelUri = this._editor.getModel()?.uri.toString() ?? String(Date.now());
-		this._executeSlashCommandId = `sessions.chat.executeSlashCommand.${modelUri}`;
-		this._register(CommandsRegistry.registerCommand(this._executeSlashCommandId, (_, slashCommandStr: string) => {
-			this.tryExecuteSlashCommand(slashCommandStr);
-			this._editor.getModel()?.setValue('');
-		}));
 		this._registerSlashCommands();
 		this._registerCompletions();
 		this._registerDecorations();
+	}
+
+	clearInput(): void {
+		this._editor.getModel()?.setValue('');
 	}
 
 	/**
@@ -238,7 +246,7 @@ export class SlashCommandHandler extends Disposable {
 							range,
 							sortText: c.sortText ?? 'a'.repeat(i + 1),
 							kind: CompletionItemKind.Text,
-							command: c.executeImmediately ? { id: this._executeSlashCommandId, title: withSlash, arguments: [withSlash] } : undefined,
+							command: c.executeImmediately ? { id: SESSIONS_EXECUTE_SLASH_COMMAND_ID, title: withSlash, arguments: [this, withSlash] } : undefined,
 						};
 					})
 				};
