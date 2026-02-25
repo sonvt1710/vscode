@@ -272,12 +272,30 @@ export class CreateRemoteAgentJobAction {
 
 		// 3. Try session options (repository picker selection)
 		const chatSessionsService = accessor.get(IChatSessionsService);
-		const repoOption = chatSessionsService.getSessionOption(sessionResource, 'repositories');
-		console.log(`[Delegation] extractRepoNwo: repoOption=${JSON.stringify(repoOption)}`);
-		if (repoOption) {
-			const optionValue = typeof repoOption === 'string' ? repoOption : (repoOption as { id: string }).id;
-			if (optionValue?.includes('/')) {
-				return optionValue;
+		// Cloud sessions use 'repositories', sessions window uses 'repository'
+		for (const optionId of ['repositories', 'repository']) {
+			const repoOption = chatSessionsService.getSessionOption(sessionResource, optionId);
+			console.log(`[Delegation] extractRepoNwo: repoOption[${optionId}]=${JSON.stringify(repoOption)}`);
+			if (repoOption) {
+				const optionValue = typeof repoOption === 'string' ? repoOption : (repoOption as { id: string }).id;
+				if (optionValue?.includes('/')) {
+					return optionValue;
+				}
+				// Option may be a URI string (github-remote-file://github/owner/repo/...)
+				if (optionValue) {
+					const nwo = extractNwoFromRemoteUrl(optionValue);
+					if (nwo) {
+						return nwo;
+					}
+					// Try parsing as URI
+					try {
+						const uri = URI.parse(optionValue);
+						const parts = uri.path.split('/').filter(Boolean);
+						if (parts.length >= 2) {
+							return `${parts[0]}/${parts[1]}`;
+						}
+					} catch { /* ignore */ }
+				}
 			}
 		}
 
