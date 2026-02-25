@@ -309,7 +309,9 @@ export class SessionsManagementService extends Disposable implements ISessionsMa
 
 	private async doSendRequestForNewSession(session: INewSession, query: string, sendOptions: IChatSendRequestOptions, selectedOptions?: ReadonlyMap<string, IChatSessionProviderOptionItem>, openNewSessionView?: boolean): Promise<void> {
 		// 1. Open the session - loads the model and shows the ChatViewPane
-		await this.openSession(session.resource);
+		if (!openNewSessionView) {
+			await this.openSession(session.resource);
+		}
 
 		// 2. Apply selected options (repository, branch, etc.) to the contributed session
 		if (selectedOptions && selectedOptions.size > 0) {
