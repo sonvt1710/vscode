@@ -8,6 +8,7 @@ import { CancellationToken } from '../../../../../base/common/cancellation.js';
 import { parse as parseJSONC } from '../../../../../base/common/json.js';
 import { Disposable, DisposableStore } from '../../../../../base/common/lifecycle.js';
 import { ResourceSet } from '../../../../../base/common/map.js';
+import { cloneAndChange } from '../../../../../base/common/objects.js';
 import { autorun, derived, IObservable, ISettableObservable, observableValue } from '../../../../../base/common/observable.js';
 import {
 	posix,
@@ -18,7 +19,7 @@ import {
 	extname, joinPath
 } from '../../../../../base/common/resources.js';
 import { URI } from '../../../../../base/common/uri.js';
-import { IConfigurationService, ConfigurationTarget, getConfigValueInTarget } from '../../../../../platform/configuration/common/configuration.js';
+import { ConfigurationTarget, getConfigValueInTarget, IConfigurationService } from '../../../../../platform/configuration/common/configuration.js';
 import { IFileService } from '../../../../../platform/files/common/files.js';
 import { IInstantiationService } from '../../../../../platform/instantiation/common/instantiation.js';
 import { ILogService } from '../../../../../platform/log/common/log.js';
@@ -27,10 +28,9 @@ import { observableConfigValue } from '../../../../../platform/observable/common
 import { IWorkspaceContextService } from '../../../../../platform/workspace/common/workspace.js';
 import { IPathService } from '../../../../services/path/common/pathService.js';
 import { ChatConfiguration } from '../constants.js';
-import { parseCopilotHooks } from '../promptSyntax/hookCompatibility.js';
 import { parseClaudeHooks } from '../promptSyntax/hookClaudeCompat.js';
-import { agentPluginDiscoveryRegistry, IAgentPlugin, IAgentPluginCommand, IAgentPluginDiscovery, IAgentPluginHook, IAgentPluginMcpServerDefinition, IAgentPluginService, IAgentPluginSkill } from './agentPluginService.js';
-import { cloneAndChange } from '../../../../../base/common/objects.js';
+import { parseCopilotHooks } from '../promptSyntax/hookCompatibility.js';
+import { agentPluginDiscoveryRegistry, IAgentPlugin, IAgentPluginAgent, IAgentPluginCommand, IAgentPluginDiscovery, IAgentPluginHook, IAgentPluginMcpServerDefinition, IAgentPluginService, IAgentPluginSkill } from './agentPluginService.js';
 import { IPluginInstallService } from './pluginInstallService.js';
 import { IMarketplacePlugin, IPluginMarketplaceService } from './pluginMarketplaceService.js';
 
@@ -334,18 +334,23 @@ export class ConfiguredAgentPluginDiscovery extends Disposable implements IAgent
 		const store = new DisposableStore();
 		const commands = observableValue<readonly IAgentPluginCommand[]>('agentPluginCommands', []);
 		const skills = observableValue<readonly IAgentPluginSkill[]>('agentPluginSkills', []);
+		const agents = observableValue<readonly IAgentPluginAgent[]>('agentPluginAgents', []);
 		const hooks = observableValue<readonly IAgentPluginHook[]>('agentPluginHooks', []);
 		const mcpServerDefinitions = observableValue<readonly IAgentPluginMcpServerDefinition[]>('agentPluginMcpServerDefinitions', []);
 		const enabled = observableValue<boolean>('agentPluginEnabled', initialEnabled);
 
 		const commandsDir = joinPath(uri, 'commands');
 		const skillsDir = joinPath(uri, 'skills');
+		const agentsDir = joinPath(uri, 'agents');
 
 		const commandsScheduler = store.add(new RunOnceScheduler(async () => {
 			commands.set(await this._readCommands(uri), undefined);
 		}, 200));
 		const skillsScheduler = store.add(new RunOnceScheduler(async () => {
 			skills.set(await this._readSkills(uri), undefined);
+		}, 200));
+		const agentsScheduler = store.add(new RunOnceScheduler(async () => {
+			agents.set(await this._readAgents(uri), undefined);
 		}, 200));
 		const hooksScheduler = store.add(new RunOnceScheduler(async () => {
 			hooks.set(await this._readHooks(uri, adapter), undefined);
@@ -362,6 +367,9 @@ export class ConfiguredAgentPluginDiscovery extends Disposable implements IAgent
 			if (e.affects(skillsDir)) {
 				skillsScheduler.schedule();
 			}
+			if (e.affects(agentsDir)) {
+				agentsScheduler.schedule();
+			}
 			if (adapter.hookWatchPaths.some(path => e.affects(joinPath(uri, path)))) {
 				hooksScheduler.schedule();
 			}
@@ -373,6 +381,7 @@ export class ConfiguredAgentPluginDiscovery extends Disposable implements IAgent
 
 		commandsScheduler.schedule();
 		skillsScheduler.schedule();
+		agentsScheduler.schedule();
 		hooksScheduler.schedule();
 		mcpScheduler.schedule();
 
@@ -385,6 +394,7 @@ export class ConfiguredAgentPluginDiscovery extends Disposable implements IAgent
 			hooks,
 			commands,
 			skills,
+			agents,
 			mcpServerDefinitions,
 			fromMarketplace,
 		};
@@ -575,6 +585,37 @@ export class ConfiguredAgentPluginDiscovery extends Disposable implements IAgent
 
 		skills.sort((a, b) => a.name.localeCompare(b.name));
 		return skills;
+	}
+
+	private async _readAgents(uri: URI): Promise<readonly IAgentPluginAgent[]> {
+		const agentsDir = joinPath(uri, 'agents');
+		let stat;
+		try {
+			stat = await this._fileService.resolve(agentsDir);
+		} catch {
+			return [];
+		}
+
+		if (!stat.isDirectory || !stat.children) {
+			return [];
+		}
+
+		const agents: IAgentPluginAgent[] = [];
+		for (const child of stat.children) {
+			if (!child.isFile || extname(child.resource).toLowerCase() !== COMMAND_FILE_SUFFIX) {
+				continue;
+			}
+
+			const name = basename(child.resource).slice(0, -COMMAND_FILE_SUFFIX.length);
+
+			agents.push({
+				uri: child.resource,
+				name,
+			});
+		}
+
+		agents.sort((a, b) => a.name.localeCompare(b.name));
+		return agents;
 	}
 
 	private async _readCommands(uri: URI): Promise<readonly IAgentPluginCommand[]> {
