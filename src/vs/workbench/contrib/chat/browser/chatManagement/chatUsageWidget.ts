@@ -73,7 +73,9 @@ export class ChatUsageWidget extends Disposable {
 
 				if (premiumChatQuota.overageEnabled && !premiumChatQuota.unlimited) {
 					const overageMessage = DOM.append(this.usageSection, $('.overage-message'));
-					overageMessage.textContent = localize('plan.overageApproved', 'Additional premium requests approved after 100%.');
+					overageMessage.append(localize('plan.overageApprovedLine1', "Additional premium requests approved."));
+					DOM.append(overageMessage, $('br'));
+					overageMessage.append(localize('plan.overageApprovedLine2', "You can continue after included premium requests limit reaches 100%."));
 				}
 			}
 

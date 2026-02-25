@@ -540,7 +540,11 @@ export class ChatStatusDashboard extends DomWidget {
 				if (typeof quota !== 'string' && quota.unlimited) {
 					overageLabel.textContent = '';
 				} else if (typeof quota !== 'string' && quota?.overageEnabled) {
-					overageLabel.textContent = localize('additionalUsageApproved', "Additional premium requests approved after 100%.");
+					overageLabel.replaceChildren(
+						localize('additionalUsageApprovedLine1', "Additional premium requests approved."),
+						$('br'),
+						localize('additionalUsageApprovedLine2', "You can continue after the included premium requests limit reaches 100%.")
+					);
 				} else {
 					overageLabel.textContent = localize('additionalUsageDisabled', "Additional paid premium requests disabled.");
 				}
