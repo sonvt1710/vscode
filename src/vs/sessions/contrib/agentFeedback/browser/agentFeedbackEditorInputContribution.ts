@@ -243,7 +243,7 @@ export class AgentFeedbackEditorInputContribution extends Disposable implements 
 				this._hide();
 			}, 0);
 		}));
-		this._store.add(this._editor.onDidFocusEditorWidget(() => this._onSelectionChanged()));
+		this._store.add(this._editor.onDidFocusEditorText(() => this._onSelectionChanged()));
 	}
 
 	private _isWidgetTarget(target: EventTarget | Element | null): boolean {
@@ -266,7 +266,7 @@ export class AgentFeedbackEditorInputContribution extends Disposable implements 
 	}
 
 	private _onSelectionChanged(): void {
-		if (this._mouseDown || !this._editor.hasWidgetFocus()) {
+		if (this._mouseDown || !this._editor.hasTextFocus()) {
 			return;
 		}
 
@@ -328,6 +328,12 @@ export class AgentFeedbackEditorInputContribution extends Disposable implements 
 		if (editorDomNode) {
 			this._widgetListeners.add(addStandardDisposableListener(editorDomNode, 'keydown', e => {
 				if (!this._visible) {
+					return;
+				}
+
+				// Only steal focus when the editor text area itself is focused,
+				// not when an overlay widget (e.g. find widget) has focus
+				if (!this._editor.hasTextFocus()) {
 					return;
 				}
 
