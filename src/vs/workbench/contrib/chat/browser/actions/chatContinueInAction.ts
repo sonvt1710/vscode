@@ -42,6 +42,18 @@ import { ctxHasEditorModification } from '../chatEditing/chatEditingEditorContex
 import { CHAT_SETUP_ACTION_ID } from './chatActions.js';
 import { PromptFileVariableKind, toPromptFileVariableEntry } from '../../common/attachments/chatVariableEntries.js';
 
+/**
+ * Extracts the "owner/repo" name-with-owner from a git remote URL.
+ * Supports HTTPS (https://github.com/owner/repo.git) and SSH (git@github.com:owner/repo.git) formats.
+ */
+function extractNwoFromRemoteUrl(remoteUrl: string): string | undefined {
+	const match = remoteUrl.match(/(?:github\.com)[/:](?<owner>[^/]+)\/(?<repo>[^/.]+)/);
+	if (match?.groups) {
+		return `${match.groups.owner}/${match.groups.repo}`;
+	}
+	return undefined;
+}
+
 export const enum ActionLocation {
 	ChatWidget = 'chatWidget',
 	Editor = 'editor'
@@ -301,8 +313,22 @@ export class CreateRemoteAgentJobAction {
 					? `The following is the conversation history from a previous ${getAgentSessionProviderName(sourceProvider)} session. Continue working on it.\n\n${transcript}\n\nUser: ${userPrompt}`
 					: userPrompt;
 
-				console.log(`[Delegation] CreateRemoteAgentJobAction: cross-type delegation (${sourceProvider} -> ${continuationTargetType}), isSidebar=${isSidebar}`);
-				await commandService.executeCommand(actionId, { prompt: delegationPrompt, attachedContext: attachedContext.asArray() });
+				// Extract repository info from the source session to pass to the target session
+				const initialSessionOptions: { optionId: string; value: string }[] = [];
+				const repoData = chatModel.repoData;
+				if (repoData?.remoteUrl) {
+					const nwo = extractNwoFromRemoteUrl(repoData.remoteUrl);
+					if (nwo) {
+						initialSessionOptions.push({ optionId: 'repositories', value: nwo });
+					}
+				}
+
+				console.log(`[Delegation] CreateRemoteAgentJobAction: cross-type delegation (${sourceProvider} -> ${continuationTargetType}), isSidebar=${isSidebar}, repoNwo=${initialSessionOptions.find(o => o.optionId === 'repositories')?.value}`);
+				await commandService.executeCommand(actionId, {
+					prompt: delegationPrompt,
+					attachedContext: attachedContext.asArray(),
+					initialSessionOptions: initialSessionOptions.length > 0 ? initialSessionOptions : undefined,
+				});
 				return;
 			}
 
