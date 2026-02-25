@@ -27,6 +27,7 @@ import { IOpenerService } from '../../../../../platform/opener/common/opener.js'
 import { IWorkbenchContribution } from '../../../../common/contributions.js';
 import { ResourceContextKey } from '../../../../common/contextkeys.js';
 import { IEditorService } from '../../../../services/editor/common/editorService.js';
+import { IFileService } from '../../../../../platform/files/common/files.js';
 import { IChatAgentService } from '../../common/participants/chatAgents.js';
 import { ChatContextKeys } from '../../common/actions/chatContextKeys.js';
 import { chatEditingWidgetFileStateContextKey, ModifiedFileEntryState } from '../../common/editing/chatEditingService.js';
@@ -51,6 +52,27 @@ function extractNwoFromRemoteUrl(remoteUrl: string): string | undefined {
 	const match = remoteUrl.match(/(?:github\.com)[/:](?<owner>[^/]+)\/(?<repo>[^/.]+)/);
 	if (match?.groups) {
 		return `${match.groups.owner}/${match.groups.repo}`;
+	}
+	return undefined;
+}
+
+/**
+ * Resolves GitHub NWO from a local git repository path by reading `.git/config`.
+ */
+async function resolveGitRemoteNwo(repoPath: string, fileService: IFileService): Promise<string | undefined> {
+	try {
+		// Try reading .git/config from the repo path
+		const gitConfigUri = URI.file(`${repoPath}/.git/config`);
+		const content = await fileService.readFile(gitConfigUri);
+		const configText = content.value.toString();
+
+		// Parse remote "origin" URL from git config
+		const remoteMatch = configText.match(/\[remote\s+"origin"\][^[]*url\s*=\s*(.+)/m);
+		if (remoteMatch?.[1]) {
+			return extractNwoFromRemoteUrl(remoteMatch[1].trim());
+		}
+	} catch {
+		// File not found or not readable
 	}
 	return undefined;
 }
@@ -229,7 +251,8 @@ export class CreateRemoteAgentJobAction {
 	 * Extracts the GitHub "owner/repo" NWO from the source session by checking
 	 * multiple data sources: chat model repoData, session metadata, and session options.
 	 */
-	private extractRepoNwoFromSession(accessor: ServicesAccessor, sessionResource: URI, chatModel: ChatModel): string | undefined {
+	private async extractRepoNwoFromSession(accessor: ServicesAccessor, sessionResource: URI, chatModel: ChatModel): Promise<string | undefined> {
+		const fileService = accessor.get(IFileService);
 		// 1. Try chat model's repoData (populated when local git repo exists)
 		const repoData = chatModel.repoData;
 		console.log(`[Delegation] extractRepoNwo: repoData=${JSON.stringify(repoData ? { remoteUrl: repoData.remoteUrl, workspaceType: repoData.workspaceType } : null)}`);
@@ -268,6 +291,15 @@ export class CreateRemoteAgentJobAction {
 					return nwo;
 				}
 			}
+
+			// Background sessions set workingDirectoryPath — resolve git remote from it
+			const workingDir = (metadata.workingDirectoryPath ?? metadata.repositoryPath ?? metadata.worktreePath) as string | undefined;
+			if (workingDir) {
+				const nwo = await resolveGitRemoteNwo(workingDir, fileService);
+				if (nwo) {
+					return nwo;
+				}
+			}
 		}
 
 		// 3. Try session options (repository picker selection)
@@ -275,26 +307,36 @@ export class CreateRemoteAgentJobAction {
 		// Cloud sessions use 'repositories', sessions window uses 'repository'
 		for (const optionId of ['repositories', 'repository']) {
 			const repoOption = chatSessionsService.getSessionOption(sessionResource, optionId);
-			console.log(`[Delegation] extractRepoNwo: repoOption[${optionId}]=${JSON.stringify(repoOption)}`);
 			if (repoOption) {
 				const optionValue = typeof repoOption === 'string' ? repoOption : (repoOption as { id: string }).id;
-				if (optionValue?.includes('/')) {
-					return optionValue;
-				}
-				// Option may be a URI string (github-remote-file://github/owner/repo/...)
 				if (optionValue) {
+					// Check if it's already a "owner/repo" NWO (exactly two segments)
+					const segments = optionValue.split('/').filter(Boolean);
+					if (segments.length === 2) {
+						return optionValue;
+					}
+					// Try extracting NWO from a URL
 					const nwo = extractNwoFromRemoteUrl(optionValue);
 					if (nwo) {
 						return nwo;
 					}
-					// Try parsing as URI
+					// Try parsing as URI (e.g. github-remote-file://github/owner/repo/...)
 					try {
 						const uri = URI.parse(optionValue);
-						const parts = uri.path.split('/').filter(Boolean);
-						if (parts.length >= 2) {
-							return `${parts[0]}/${parts[1]}`;
+						if (uri.authority === 'github') {
+							const parts = uri.path.split('/').filter(Boolean);
+							if (parts.length >= 2) {
+								return `${parts[0]}/${parts[1]}`;
+							}
 						}
 					} catch { /* ignore */ }
+					// Local filesystem path — resolve git remote
+					if (optionValue.startsWith('/') || optionValue.match(/^[A-Za-z]:\\/)) {
+						const nwoFromGit = await resolveGitRemoteNwo(optionValue, fileService);
+						if (nwoFromGit) {
+							return nwoFromGit;
+						}
+					}
 				}
 			}
 		}
@@ -393,7 +435,7 @@ export class CreateRemoteAgentJobAction {
 
 				// Extract repository info from the source session to pass to the target session
 				const initialSessionOptions: { optionId: string; value: string }[] = [];
-				const repoNwo = this.extractRepoNwoFromSession(accessor, sessionResource, chatModel);
+				const repoNwo = await this.extractRepoNwoFromSession(accessor, sessionResource, chatModel);
 				if (repoNwo) {
 					initialSessionOptions.push({ optionId: 'repositories', value: repoNwo });
 				}
