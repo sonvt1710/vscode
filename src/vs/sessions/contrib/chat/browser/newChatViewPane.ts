@@ -1182,7 +1182,8 @@ class NewChatWidget extends Disposable {
 	}
 
 	private _updateSlashCommandDecorations(): void {
-		const value = this._editor.getValue();
+		const model = this._editor.getModel();
+		const value = model?.getValue() ?? '';
 		const match = value.match(/^\/(\w+)\s?/);
 
 		if (!match) {
@@ -1211,7 +1212,7 @@ class NewChatWidget extends Disposable {
 		if (!restOfInput && slashCommand.detail) {
 			const placeholderCol = match[0].length + 1;
 			const placeholderDeco: IDecorationOptions[] = [{
-				range: { startLineNumber: 1, startColumn: placeholderCol, endLineNumber: 1, endColumn: 1000 },
+				range: { startLineNumber: 1, startColumn: placeholderCol, endLineNumber: 1, endColumn: model!.getLineMaxColumn(1) },
 				renderOptions: {
 					after: {
 						contentText: slashCommand.detail,
