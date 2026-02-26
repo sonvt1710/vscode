@@ -18,6 +18,7 @@ import { ChatContextKeys } from '../../../../workbench/contrib/chat/common/actio
 import { IAgentSessionsService } from '../../../../workbench/contrib/chat/browser/agentSessions/agentSessionsService.js';
 import { isIChatSessionFileChange2 } from '../../../../workbench/contrib/chat/common/chatSessionsService.js';
 import { ISessionsManagementService } from '../../sessions/browser/sessionsManagementService.js';
+import { IsSessionsWindowContext } from '../../../../workbench/common/contextkeys.js';
 import { joinPath } from '../../../../base/common/resources.js';
 import { relative } from '../../../../base/common/path.js';
 
@@ -55,13 +56,13 @@ class ApplyToParentRepoAction extends Action2 {
 			title: localize2('applyToParentRepo', 'Apply to Parent Repo'),
 			icon: Codicon.desktopDownload,
 			category: CHAT_CATEGORY,
-			precondition: ContextKeyExpr.and(hasWorktreeAndRepositoryContextKey, ChatContextKeys.hasAgentSessionChanges),
+			precondition: ContextKeyExpr.and(IsSessionsWindowContext, hasWorktreeAndRepositoryContextKey, ChatContextKeys.hasAgentSessionChanges),
 			menu: [
 				{
 					id: MenuId.ChatEditingSessionChangesToolbar,
 					group: 'navigation',
 					order: 4,
-					when: ContextKeyExpr.and(hasWorktreeAndRepositoryContextKey, ChatContextKeys.hasAgentSessionChanges),
+					when: ContextKeyExpr.and(IsSessionsWindowContext, hasWorktreeAndRepositoryContextKey, ChatContextKeys.hasAgentSessionChanges),
 				},
 			],
 		});
