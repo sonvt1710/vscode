@@ -18,7 +18,8 @@ import { ChatContextKeys } from '../../../../workbench/contrib/chat/common/actio
 import { IAgentSessionsService } from '../../../../workbench/contrib/chat/browser/agentSessions/agentSessionsService.js';
 import { isIChatSessionFileChange2 } from '../../../../workbench/contrib/chat/common/chatSessionsService.js';
 import { ISessionsManagementService } from '../../sessions/browser/sessionsManagementService.js';
-import { joinPath, relativePath } from '../../../../base/common/resources.js';
+import { joinPath } from '../../../../base/common/resources.js';
+import { relative } from '../../../../base/common/path.js';
 
 const hasWorktreeAndRepositoryContextKey = new RawContextKey<boolean>('agentSessionHasWorktreeAndRepository', false, {
 	type: 'boolean',
@@ -103,8 +104,8 @@ class ApplyToParentRepoAction extends Action2 {
 					// For deletions, compute the path from the original and delete in parent repo
 					const originalUri = change.originalUri;
 					if (originalUri) {
-						const relPath = relativePath(worktreeRoot, originalUri);
-						if (relPath) {
+						const relPath = relative(worktreeRoot.path, originalUri.path);
+						if (relPath && !relPath.startsWith('..')) {
 							const targetUri = joinPath(repoRoot, relPath);
 							if (await fileService.exists(targetUri)) {
 								await fileService.del(targetUri);
@@ -114,8 +115,8 @@ class ApplyToParentRepoAction extends Action2 {
 					}
 				} else {
 					// Copy modified file to parent repo
-					const relPath = relativePath(worktreeRoot, modifiedUri);
-					if (relPath) {
+					const relPath = relative(worktreeRoot.path, modifiedUri.path);
+					if (relPath && !relPath.startsWith('..')) {
 						const targetUri = joinPath(repoRoot, relPath);
 						await fileService.copy(modifiedUri, targetUri, true);
 						copiedCount++;
