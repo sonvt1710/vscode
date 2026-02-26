@@ -597,7 +597,7 @@
 }
 
 .monaco-editor .sticky-widget .sticky-line-content {
-	background: var(--vscode-editor-background) !important
+	background: var(--vscode-editor-background) !important;
 }
 
 .monaco-workbench .monaco-editor .sticky-widget .sticky-widget-line-numbers {
