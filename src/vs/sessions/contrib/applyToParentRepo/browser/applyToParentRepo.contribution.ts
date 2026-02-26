@@ -19,8 +19,8 @@ import { IAgentSessionsService } from '../../../../workbench/contrib/chat/browse
 import { isIChatSessionFileChange2 } from '../../../../workbench/contrib/chat/common/chatSessionsService.js';
 import { ISessionsManagementService } from '../../sessions/browser/sessionsManagementService.js';
 import { IsSessionsWindowContext } from '../../../../workbench/common/contextkeys.js';
-import { joinPath } from '../../../../base/common/resources.js';
-import { relative } from '../../../../base/common/path.js';
+import { isEqualOrParent, joinPath, relativePath } from '../../../../base/common/resources.js';
+import { ILogService } from '../../../../platform/log/common/log.js';
 
 const hasWorktreeAndRepositoryContextKey = new RawContextKey<boolean>('agentSessionHasWorktreeAndRepository', false, {
 	type: 'boolean',
@@ -73,6 +73,7 @@ class ApplyToParentRepoAction extends Action2 {
 		const agentSessionsService = accessor.get(IAgentSessionsService);
 		const fileService = accessor.get(IFileService);
 		const notificationService = accessor.get(INotificationService);
+		const logService = accessor.get(ILogService);
 
 		const activeSession = sessionManagementService.getActiveSession();
 		if (!activeSession?.worktree || !activeSession?.repository) {
@@ -90,7 +91,7 @@ class ApplyToParentRepoAction extends Action2 {
 
 		let copiedCount = 0;
 		let deletedCount = 0;
-		const errors: string[] = [];
+		let errorCount = 0;
 
 		for (const change of changes) {
 			try {
@@ -102,11 +103,10 @@ class ApplyToParentRepoAction extends Action2 {
 					: false;
 
 				if (isDeletion) {
-					// For deletions, compute the path from the original and delete in parent repo
 					const originalUri = change.originalUri;
-					if (originalUri) {
-						const relPath = relative(worktreeRoot.path, originalUri.path);
-						if (relPath && !relPath.startsWith('..')) {
+					if (originalUri && isEqualOrParent(originalUri, worktreeRoot)) {
+						const relPath = relativePath(worktreeRoot, originalUri);
+						if (relPath) {
 							const targetUri = joinPath(repoRoot, relPath);
 							if (await fileService.exists(targetUri)) {
 								await fileService.del(targetUri);
@@ -115,22 +115,23 @@ class ApplyToParentRepoAction extends Action2 {
 						}
 					}
 				} else {
-					// Copy modified file to parent repo
-					const relPath = relative(worktreeRoot.path, modifiedUri.path);
-					if (relPath && !relPath.startsWith('..')) {
-						const targetUri = joinPath(repoRoot, relPath);
-						await fileService.copy(modifiedUri, targetUri, true);
-						copiedCount++;
+					if (isEqualOrParent(modifiedUri, worktreeRoot)) {
+						const relPath = relativePath(worktreeRoot, modifiedUri);
+						if (relPath) {
+							const targetUri = joinPath(repoRoot, relPath);
+							await fileService.copy(modifiedUri, targetUri, true);
+							copiedCount++;
+						}
 					}
 				}
 			} catch (err) {
-				const message = err instanceof Error ? err.message : String(err);
-				errors.push(message);
+				logService.error('[ApplyToParentRepo] Failed to apply change', err);
+				errorCount++;
 			}
 		}
 
-		if (errors.length > 0) {
-			notificationService.warn(localize('applyToParentRepoPartial', "Applied {0} file(s) to parent repo with {1} error(s).", copiedCount + deletedCount, errors.length));
+		if (errorCount > 0) {
+			notificationService.warn(localize('applyToParentRepoPartial', "Applied {0} file(s) to parent repo with {1} error(s).", copiedCount + deletedCount, errorCount));
 		} else if (copiedCount + deletedCount > 0) {
 			notificationService.info(localize('applyToParentRepoSuccess', "Applied {0} file(s) to parent repo.", copiedCount + deletedCount));
 		}
