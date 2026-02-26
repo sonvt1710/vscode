@@ -8,6 +8,7 @@ import { API as GitAPI, RefType, Repository } from './typings/git.js';
 import { publishRepository } from './publish.js';
 import { DisposableStore, getRepositoryFromUrl } from './util.js';
 import { LinkContext, getCommitLink, getLink, getVscodeDevHost } from './links.js';
+import { getOctokit } from './auth.js';
 
 async function copyVscodeDevLink(gitAPI: GitAPI, useSelection: boolean, context: LinkContext, includeRange = true) {
 	try {
@@ -88,6 +89,27 @@ async function createPullRequest(gitAPI: GitAPI, sessionResource: vscode.Uri | u
 			return;
 		}
 	}
+
+	// Check if a PR already exists for this branch
+	try {
+		const octokit = await getOctokit();
+		const { data: pullRequests } = await octokit.pulls.list({
+			owner: remoteInfo.owner,
+			repo: remoteInfo.repo,
+			head: `${remoteInfo.owner}:${head.name}`,
+			state: 'open',
+		});
+
+		if (pullRequests.length > 0) {
+			vscode.commands.executeCommand('setContext', 'github.hasOpenPullRequest', true);
+			vscode.env.openExternal(vscode.Uri.parse(pullRequests[0].html_url));
+			return;
+		}
+	} catch {
+		// If the API call fails, fall through to open the creation URL
+	}
+
+	vscode.commands.executeCommand('setContext', 'github.hasOpenPullRequest', false);
 
 	// Build the GitHub PR creation URL
 	// Format: https://github.com/owner/repo/compare/base...head
@@ -178,6 +200,10 @@ export function registerCommands(gitAPI: GitAPI): vscode.Disposable {
 	}));
 
 	disposables.add(vscode.commands.registerCommand('github.createPullRequest', async (sessionResource: vscode.Uri | undefined, sessionMetadata: { worktreePath?: string } | undefined) => {
+		return createPullRequest(gitAPI, sessionResource, sessionMetadata);
+	}));
+
+	disposables.add(vscode.commands.registerCommand('github.openPullRequest', async (sessionResource: vscode.Uri | undefined, sessionMetadata: { worktreePath?: string } | undefined) => {
 		return createPullRequest(gitAPI, sessionResource, sessionMetadata);
 	}));
 
