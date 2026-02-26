@@ -573,7 +573,7 @@ export class ChangesViewPane extends ViewPane {
 								return { showIcon: true, showLabel: true, isSecondary: true, customClass: 'working-set-diff-stats', customLabel: diffStatsLabel };
 							}
 							if (action.id === 'github.createPullRequest' || action.id === 'github.openPullRequest') {
-								return { showIcon: true, showLabel: true, isSecondary: true, customClass: 'flex-grow' };
+								return { showIcon: true, showLabel: true, isSecondary: true, customClass: 'flex-grow', customLabel: localize('pullRequest.short', "PR") };
 							}
 							if (action.id === 'chatEditing.synchronizeChanges') {
 								return { showIcon: true, showLabel: true, isSecondary: true };
