@@ -20,6 +20,7 @@ import { GitHubSourceControlHistoryItemDetailsProvider } from './historyItemDeta
 import { OctokitService } from './auth.js';
 
 export function activate(context: ExtensionContext): void {
+	console.log('[github ext] activate() called');
 	const disposables: Disposable[] = [];
 	context.subscriptions.push(new Disposable(() => Disposable.from(...disposables).dispose()));
 
