@@ -134,13 +134,6 @@ export class SlashCommandHandler extends Disposable {
 			executeImmediately: true,
 			execute: openSection(AICustomizationManagementSection.Hooks),
 		});
-		this._slashCommands.push({
-			command: 'mcp',
-			detail: localize('slashCommand.mcp', "View and manage MCP servers"),
-			sortText: 'z3_mcp',
-			executeImmediately: true,
-			execute: openSection(AICustomizationManagementSection.McpServers),
-		});
 	}
 
 	private _registerDecorations(): void {
