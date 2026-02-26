@@ -20,6 +20,7 @@ import { Iterable } from '../../../../../base/common/iterator.js';
 import { Disposable, DisposableStore, IDisposable, MutableDisposable, thenIfNotDisposed } from '../../../../../base/common/lifecycle.js';
 import { ResourceSet } from '../../../../../base/common/map.js';
 import { Schemas } from '../../../../../base/common/network.js';
+import { IsSessionsWindowContext } from '../../../../common/contextkeys.js';
 import { filter } from '../../../../../base/common/objects.js';
 import { autorun, derived, observableFromEvent, observableValue } from '../../../../../base/common/observable.js';
 import { basename, extUri, isEqual } from '../../../../../base/common/resources.js';
@@ -1543,8 +1544,9 @@ export class ChatWidget extends Disposable implements IChatWidget {
 	}
 
 	private async archiveLocalParentSession(sessionResource: URI): Promise<void> {
-		if (sessionResource.scheme !== Schemas.vscodeLocalChatSession) {
-			this.logService.debug(`[Delegation] archiveLocalParentSession: skipping, scheme=${sessionResource.scheme} is not vscodeLocalChatSession`);
+		// In the regular workbench, only archive local chat sessions.
+		// In the sessions window, allow archiving any session type after delegation.
+		if (sessionResource.scheme !== Schemas.vscodeLocalChatSession && !IsSessionsWindowContext.getValue(this.contextKeyService)) {
 			return;
 		}
 
