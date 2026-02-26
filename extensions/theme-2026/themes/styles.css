@@ -724,6 +724,17 @@
 	background: var(--vscode-notifications-background) !important;
 }
 
+.monaco-workbench.monaco-reduce-transparency .notifications-list-container {
+	-webkit-backdrop-filter: none;
+	backdrop-filter: none;
+	background: var(--vscode-notifications-background) !important;
+}
+
+.monaco-workbench.monaco-reduce-transparency .notification-list-item,
+.monaco-workbench.monaco-reduce-transparency .notifications-center-header {
+	background: var(--vscode-notifications-background) !important;
+}
+
 .monaco-workbench.monaco-reduce-transparency .notifications-center {
 	-webkit-backdrop-filter: none;
 	backdrop-filter: none;
@@ -787,6 +798,7 @@
 .monaco-workbench.monaco-reduce-transparency .defineKeybindingWidget {
 	-webkit-backdrop-filter: none;
 	backdrop-filter: none;
+	background: var(--vscode-editorHoverWidget-background) !important;
 }
 
 /* Chat Editor Overlay */
