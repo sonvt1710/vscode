@@ -7,6 +7,7 @@ import { Codicon } from '../../../../../base/common/codicons.js';
 import { h } from '../../../../../base/browser/dom.js';
 import { Disposable, IDisposable, markAsSingleton } from '../../../../../base/common/lifecycle.js';
 import { Schemas } from '../../../../../base/common/network.js';
+import { isAbsolute } from '../../../../../base/common/path.js';
 import { basename } from '../../../../../base/common/resources.js';
 import { ThemeIcon } from '../../../../../base/common/themables.js';
 import { URI } from '../../../../../base/common/uri.js';
@@ -352,7 +353,7 @@ export class CreateRemoteAgentJobAction {
 						}
 					} catch { /* ignore */ }
 					// Local filesystem path — resolve git remote
-					if (optionValue.startsWith('/') || optionValue.match(/^[A-Za-z]:\\/)) {
+					if (isAbsolute(optionValue)) {
 						const nwoFromGit = await resolveGitRemoteNwo(optionValue, fileService);
 						if (nwoFromGit) {
 							return nwoFromGit;
@@ -441,12 +442,17 @@ export class CreateRemoteAgentJobAction {
 					? `workbench.action.chat.openNewSessionSidebar.${continuationTargetType}`
 					: `${NEW_CHAT_SESSION_ACTION_ID}.${continuationTargetType}`;
 
-				// Build conversation transcript from the source session to preserve context
-				const transcript = chatRequests.map(req => {
+				// Build conversation transcript from the source session to preserve context.
+				// Truncate to avoid exceeding token limits of the target model.
+				const maxTranscriptLength = 20_000;
+				let transcript = chatRequests.map(req => {
 					const userMsg = `User: ${req.message.text}`;
 					const respMsg = req.response?.response ? `Assistant: ${req.response.response.getMarkdown()}` : '';
 					return respMsg ? `${userMsg}\n${respMsg}` : userMsg;
 				}).join('\n\n');
+				if (transcript.length > maxTranscriptLength) {
+					transcript = transcript.substring(transcript.length - maxTranscriptLength);
+				}
 
 				const delegationPrompt = transcript
 					? `The following is the conversation history from a previous ${getAgentSessionProviderName(sourceProvider)} session. Continue working on it.\n\n${transcript}\n\nUser: ${userPrompt}`

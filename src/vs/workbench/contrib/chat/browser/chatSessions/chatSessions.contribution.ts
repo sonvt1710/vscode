@@ -1302,9 +1302,9 @@ async function openChatSession(accessor: ServicesAccessor, openOptions: NewChatS
 			// so that the contributed session provider can read them.
 			if (chatSendOptions.initialSessionOptions) {
 				const model = chatService.getSession(resource);
-				if (model) {
+				if (model?.contributedChatSession) {
 					model.setContributedChatSession({
-						...model.contributedChatSession!,
+						...model.contributedChatSession,
 						initialSessionOptions: chatSendOptions.initialSessionOptions,
 					});
 				}
