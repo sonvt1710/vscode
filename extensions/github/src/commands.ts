@@ -98,13 +98,14 @@ async function checkOpenPullRequest(gitAPI: GitAPI, _sessionResource: vscode.Uri
 
 	try {
 		const octokit = await getOctokit();
-		const { data: pullRequests } = await octokit.pulls.list({
+		const { data: openPRs } = await octokit.pulls.list({
 			owner: resolved.remoteInfo.owner,
 			repo: resolved.remoteInfo.repo,
 			head: `${resolved.remoteInfo.owner}:${resolved.head.name}`,
+			state: 'all',
 		});
 
-		vscode.commands.executeCommand('setContext', 'github.hasOpenPullRequest', pullRequests.length > 0);
+		vscode.commands.executeCommand('setContext', 'github.hasOpenPullRequest', openPRs.length > 0);
 	} catch {
 		// Silently fail — leave context key unchanged
 	}
@@ -144,6 +145,7 @@ async function createPullRequest(gitAPI: GitAPI, sessionResource: vscode.Uri | u
 			owner: remoteInfo.owner,
 			repo: remoteInfo.repo,
 			head: `${remoteInfo.owner}:${head.name}`,
+			state: 'all',
 		});
 
 		if (pullRequests.length > 0) {
