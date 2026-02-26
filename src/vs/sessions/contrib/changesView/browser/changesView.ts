@@ -191,7 +191,7 @@ export class ChangesViewPane extends ViewPane {
 
 	// Track current body dimensions for list layout
 	private currentBodyHeight = 0;
-	private readonly bodyWidthObs = observableValue<number>(this, 0);
+	private currentBodyWidth = 0;
 
 	// View mode (list vs tree)
 	private readonly viewModeObs: ReturnType<typeof observableValue<ChangesViewMode>>;
@@ -556,9 +556,7 @@ export class ChangesViewPane extends ViewPane {
 			this.renderDisposables.add(autorun(reader => {
 				const { isSessionMenu, added, removed } = topLevelStats.read(reader);
 				const sessionResource = activeSessionResource.read(reader);
-				const bodyWidth = this.bodyWidthObs.read(reader);
 				const menuId = isSessionMenu ? MenuId.ChatEditingSessionChangesToolbar : MenuId.ChatEditingWidgetToolbar;
-				const useShortPrLabel = bodyWidth < 150;
 
 				reader.store.add(scopedInstantiationService.createInstance(
 					MenuWorkbenchButtonBar,
@@ -569,7 +567,7 @@ export class ChangesViewPane extends ViewPane {
 						menuOptions: isSessionMenu && sessionResource
 							? { args: [sessionResource, this.agentSessionsService.getSession(sessionResource)?.metadata] }
 							: { shouldForwardArgs: true },
-						buttonConfigProvider: (action) => {
+						buttonConfigProvider: (action, index) => {
 							if (action.id === 'chatEditing.viewChanges' || action.id === 'chatEditing.viewPreviousEdits' || action.id === 'chatEditing.viewAllSessionChanges' || action.id === 'chat.openSessionWorktreeInVSCode') {
 								const diffStatsLabel = new MarkdownString(
 									`<span class="working-set-lines-added">+${added}</span>&nbsp;<span class="working-set-lines-removed">-${removed}</span>`,
@@ -578,7 +576,9 @@ export class ChangesViewPane extends ViewPane {
 								return { showIcon: true, showLabel: true, isSecondary: true, customClass: 'working-set-diff-stats', customLabel: diffStatsLabel };
 							}
 							if (action.id === 'github.createPullRequest' || action.id === 'github.openPullRequest') {
-								return { showIcon: true, showLabel: true, isSecondary: true, customClass: 'flex-grow', customLabel: useShortPrLabel ? localize('pullRequest.short', "PR") : undefined };
+								// Use short label when there are other buttons alongside the PR button
+								const useShortLabel = index > 0;
+								return { showIcon: true, showLabel: true, isSecondary: true, customClass: 'flex-grow', customLabel: useShortLabel ? localize('pullRequest.short', "PR") : undefined };
 							}
 							if (action.id === 'chatEditing.synchronizeChanges') {
 								return { showIcon: true, showLabel: true, isSecondary: true };
@@ -779,14 +779,14 @@ export class ChangesViewPane extends ViewPane {
 		const contentHeight = this.tree.contentHeight;
 		const treeHeight = Math.min(availableHeight, contentHeight);
 
-		this.tree.layout(treeHeight, this.bodyWidthObs.get());
+		this.tree.layout(treeHeight, this.currentBodyWidth);
 		this.tree.getHTMLElement().style.height = `${treeHeight}px`;
 	}
 
 	protected override layoutBody(height: number, width: number): void {
 		super.layoutBody(height, width);
 		this.currentBodyHeight = height;
-		this.bodyWidthObs.set(width, undefined);
+		this.currentBodyWidth = width;
 		this.layoutTree();
 	}
 
