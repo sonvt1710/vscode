@@ -35,45 +35,93 @@ async function openVscodeDevLink(gitAPI: GitAPI): Promise<vscode.Uri | undefined
 	}
 }
 
-async function createPullRequest(gitAPI: GitAPI, sessionResource: vscode.Uri | undefined, sessionMetadata: { worktreePath?: string } | undefined): Promise<void> {
-	if (!sessionResource || !sessionMetadata?.worktreePath) {
-		return;
+interface ResolvedSessionRepo {
+	repository: Repository;
+	remoteInfo: { owner: string; repo: string };
+	gitRemote: { name: string; fetchUrl: string };
+	head: { name: string; upstream?: { name: string; remote: string; commit: string } };
+}
+
+function resolveSessionRepo(gitAPI: GitAPI, sessionMetadata: { worktreePath?: string } | undefined, showErrors: boolean): ResolvedSessionRepo | undefined {
+	if (!sessionMetadata?.worktreePath) {
+		return undefined;
 	}
 
 	const worktreeUri = vscode.Uri.file(sessionMetadata.worktreePath);
 	const repository = gitAPI.getRepository(worktreeUri);
 
 	if (!repository) {
-		vscode.window.showErrorMessage(vscode.l10n.t('Could not find a git repository for the session worktree.'));
-		return;
+		if (showErrors) {
+			vscode.window.showErrorMessage(vscode.l10n.t('Could not find a git repository for the session worktree.'));
+		}
+		return undefined;
 	}
 
-	// Find the GitHub remote
 	const remotes = repository.state.remotes
 		.filter(remote => remote.fetchUrl && getRepositoryFromUrl(remote.fetchUrl));
 
 	if (remotes.length === 0) {
-		vscode.window.showErrorMessage(vscode.l10n.t('Could not find a GitHub remote for this repository.'));
-		return;
+		if (showErrors) {
+			vscode.window.showErrorMessage(vscode.l10n.t('Could not find a GitHub remote for this repository.'));
+		}
+		return undefined;
 	}
 
-	// Prefer upstream -> origin -> first
 	const gitRemote = remotes.find(r => r.name === 'upstream')
 		?? remotes.find(r => r.name === 'origin')
 		?? remotes[0];
 
 	const remoteInfo = getRepositoryFromUrl(gitRemote.fetchUrl!);
 	if (!remoteInfo) {
-		vscode.window.showErrorMessage(vscode.l10n.t('Could not parse GitHub remote URL.'));
+		if (showErrors) {
+			vscode.window.showErrorMessage(vscode.l10n.t('Could not parse GitHub remote URL.'));
+		}
+		return undefined;
+	}
+
+	const head = repository.state.HEAD;
+	if (!head?.name) {
+		if (showErrors) {
+			vscode.window.showErrorMessage(vscode.l10n.t('Could not determine the current branch.'));
+		}
+		return undefined;
+	}
+
+	return { repository, remoteInfo, gitRemote: { name: gitRemote.name, fetchUrl: gitRemote.fetchUrl! }, head: head as ResolvedSessionRepo['head'] };
+}
+
+async function checkOpenPullRequest(gitAPI: GitAPI, _sessionResource: vscode.Uri | undefined, sessionMetadata: { worktreePath?: string } | undefined): Promise<void> {
+	const resolved = resolveSessionRepo(gitAPI, sessionMetadata, false);
+	if (!resolved) {
 		return;
 	}
 
-	// Get the current branch (the worktree branch)
-	const head = repository.state.HEAD;
-	if (!head?.name) {
-		vscode.window.showErrorMessage(vscode.l10n.t('Could not determine the current branch.'));
+	try {
+		const octokit = await getOctokit();
+		const { data: pullRequests } = await octokit.pulls.list({
+			owner: resolved.remoteInfo.owner,
+			repo: resolved.remoteInfo.repo,
+			head: `${resolved.remoteInfo.owner}:${resolved.head.name}`,
+			state: 'open',
+		});
+
+		vscode.commands.executeCommand('setContext', 'github.hasOpenPullRequest', pullRequests.length > 0);
+	} catch {
+		// Silently fail — leave context key unchanged
+	}
+}
+
+async function createPullRequest(gitAPI: GitAPI, sessionResource: vscode.Uri | undefined, sessionMetadata: { worktreePath?: string } | undefined): Promise<void> {
+	if (!sessionResource) {
 		return;
 	}
+
+	const resolved = resolveSessionRepo(gitAPI, sessionMetadata, true);
+	if (!resolved) {
+		return;
+	}
+
+	const { repository, remoteInfo, gitRemote, head } = resolved;
 
 	// Ensure the branch is published to the remote
 	if (!head.upstream) {
@@ -203,6 +251,10 @@ export function registerCommands(gitAPI: GitAPI): vscode.Disposable {
 
 	disposables.add(vscode.commands.registerCommand('github.openPullRequest', async (sessionResource: vscode.Uri | undefined, sessionMetadata: { worktreePath?: string } | undefined) => {
 		return createPullRequest(gitAPI, sessionResource, sessionMetadata);
+	}));
+
+	disposables.add(vscode.commands.registerCommand('github.checkOpenPullRequest', async (sessionResource: vscode.Uri | undefined, sessionMetadata: { worktreePath?: string } | undefined) => {
+		return checkOpenPullRequest(gitAPI, sessionResource, sessionMetadata);
 	}));
 
 	return disposables;

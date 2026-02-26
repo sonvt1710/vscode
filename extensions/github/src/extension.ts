@@ -20,7 +20,6 @@ import { GitHubSourceControlHistoryItemDetailsProvider } from './historyItemDeta
 import { OctokitService } from './auth.js';
 
 export function activate(context: ExtensionContext): void {
-	console.log('[github ext] activate() called');
 	const disposables: Disposable[] = [];
 	context.subscriptions.push(new Disposable(() => Disposable.from(...disposables).dispose()));
 
@@ -97,12 +96,9 @@ function initializeGitExtension(context: ExtensionContext, octokitService: Octok
 	const initialize = () => {
 		gitExtension!.activate()
 			.then(extension => {
-				console.log('[github ext] git extension activated, enabled:', extension.enabled);
 				const onDidChangeGitExtensionEnablement = (enabled: boolean) => {
-					console.log('[github ext] onDidChangeGitExtensionEnablement:', enabled);
 					if (enabled) {
 						const gitAPI = extension.getAPI(1);
-						console.log('[github ext] got gitAPI, repositories:', gitAPI.repositories.length);
 
 						disposables.add(registerCommands(gitAPI));
 						disposables.add(new GithubCredentialProviderManager(gitAPI));
@@ -126,10 +122,8 @@ function initializeGitExtension(context: ExtensionContext, octokitService: Octok
 	};
 
 	if (gitExtension) {
-		console.log('[github ext] vscode.git extension found, initializing');
 		initialize();
 	} else {
-		console.log('[github ext] vscode.git extension NOT found, waiting...');
 		const listener = extensions.onDidChange(() => {
 			if (!gitExtension && extensions.getExtension<GitExtension>('vscode.git')) {
 				gitExtension = extensions.getExtension<GitExtension>('vscode.git');
