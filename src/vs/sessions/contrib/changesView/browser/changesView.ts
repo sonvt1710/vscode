@@ -191,7 +191,7 @@ export class ChangesViewPane extends ViewPane {
 
 	// Track current body dimensions for list layout
 	private currentBodyHeight = 0;
-	private currentBodyWidth = 0;
+	private readonly bodyWidthObs = observableValue<number>(this, 0);
 
 	// View mode (list vs tree)
 	private readonly viewModeObs: ReturnType<typeof observableValue<ChangesViewMode>>;
@@ -544,16 +544,6 @@ export class ChangesViewPane extends ViewPane {
 				return files > 0;
 			}));
 
-			// Track container width to adapt button labels
-			const actionsContainerWidth = observableValue<number>(this, this.bodyContainer.clientWidth);
-			const resizeObserver = new ResizeObserver(entries => {
-				for (const entry of entries) {
-					actionsContainerWidth.set(entry.contentRect.width, undefined);
-				}
-			});
-			resizeObserver.observe(this.bodyContainer);
-			this.renderDisposables.add({ dispose: () => resizeObserver.disconnect() });
-
 			// Check if a PR exists when the active session changes
 			this.renderDisposables.add(autorun(reader => {
 				const sessionResource = activeSessionResource.read(reader);
@@ -566,9 +556,9 @@ export class ChangesViewPane extends ViewPane {
 			this.renderDisposables.add(autorun(reader => {
 				const { isSessionMenu, added, removed } = topLevelStats.read(reader);
 				const sessionResource = activeSessionResource.read(reader);
-				const containerWidth = actionsContainerWidth.read(reader);
+				const bodyWidth = this.bodyWidthObs.read(reader);
 				const menuId = isSessionMenu ? MenuId.ChatEditingSessionChangesToolbar : MenuId.ChatEditingWidgetToolbar;
-				const useShortPrLabel = containerWidth < 150;
+				const useShortPrLabel = bodyWidth < 150;
 
 				reader.store.add(scopedInstantiationService.createInstance(
 					MenuWorkbenchButtonBar,
@@ -789,14 +779,14 @@ export class ChangesViewPane extends ViewPane {
 		const contentHeight = this.tree.contentHeight;
 		const treeHeight = Math.min(availableHeight, contentHeight);
 
-		this.tree.layout(treeHeight, this.currentBodyWidth);
+		this.tree.layout(treeHeight, this.bodyWidthObs.get());
 		this.tree.getHTMLElement().style.height = `${treeHeight}px`;
 	}
 
 	protected override layoutBody(height: number, width: number): void {
 		super.layoutBody(height, width);
 		this.currentBodyHeight = height;
-		this.currentBodyWidth = width;
+		this.bodyWidthObs.set(width, undefined);
 		this.layoutTree();
 	}
 
