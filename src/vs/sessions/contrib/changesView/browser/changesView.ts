@@ -544,10 +544,22 @@ export class ChangesViewPane extends ViewPane {
 				return files > 0;
 			}));
 
+			// Track container width to adapt button labels
+			const actionsContainerWidth = observableValue<number>(this, this.actionsContainer.clientWidth);
+			const resizeObserver = new ResizeObserver(entries => {
+				for (const entry of entries) {
+					actionsContainerWidth.set(entry.contentRect.width, undefined);
+				}
+			});
+			resizeObserver.observe(this.actionsContainer);
+			this.renderDisposables.add({ dispose: () => resizeObserver.disconnect() });
+
 			this.renderDisposables.add(autorun(reader => {
 				const { isSessionMenu, added, removed } = topLevelStats.read(reader);
 				const sessionResource = activeSessionResource.read(reader);
+				const containerWidth = actionsContainerWidth.read(reader);
 				const menuId = isSessionMenu ? MenuId.ChatEditingSessionChangesToolbar : MenuId.ChatEditingWidgetToolbar;
+				const useShortPrLabel = containerWidth < 350;
 
 				// Proactively check if a PR exists for the current session branch
 				if (isSessionMenu && sessionResource) {
@@ -573,7 +585,7 @@ export class ChangesViewPane extends ViewPane {
 								return { showIcon: true, showLabel: true, isSecondary: true, customClass: 'working-set-diff-stats', customLabel: diffStatsLabel };
 							}
 							if (action.id === 'github.createPullRequest' || action.id === 'github.openPullRequest') {
-								return { showIcon: true, showLabel: true, isSecondary: true, customClass: 'flex-grow', customLabel: localize('pullRequest.short', "PR") };
+								return { showIcon: true, showLabel: true, isSecondary: true, customClass: 'flex-grow', customLabel: useShortPrLabel ? localize('pullRequest.short', "PR") : undefined };
 							}
 							if (action.id === 'chatEditing.synchronizeChanges') {
 								return { showIcon: true, showLabel: true, isSecondary: true };
