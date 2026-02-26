@@ -554,18 +554,21 @@ export class ChangesViewPane extends ViewPane {
 			resizeObserver.observe(this.actionsContainer);
 			this.renderDisposables.add({ dispose: () => resizeObserver.disconnect() });
 
+			// Check if a PR exists when the active session changes
+			this.renderDisposables.add(autorun(reader => {
+				const sessionResource = activeSessionResource.read(reader);
+				if (sessionResource) {
+					const metadata = this.agentSessionsService.getSession(sessionResource)?.metadata;
+					this.commandService.executeCommand('github.checkOpenPullRequest', sessionResource, metadata).catch(() => { /* ignore */ });
+				}
+			}));
+
 			this.renderDisposables.add(autorun(reader => {
 				const { isSessionMenu, added, removed } = topLevelStats.read(reader);
 				const sessionResource = activeSessionResource.read(reader);
 				const containerWidth = actionsContainerWidth.read(reader);
 				const menuId = isSessionMenu ? MenuId.ChatEditingSessionChangesToolbar : MenuId.ChatEditingWidgetToolbar;
 				const useShortPrLabel = containerWidth < 150;
-
-				// Proactively check if a PR exists for the current session branch
-				if (isSessionMenu && sessionResource) {
-					const metadata = this.agentSessionsService.getSession(sessionResource)?.metadata;
-					this.commandService.executeCommand('github.checkOpenPullRequest', sessionResource, metadata).catch(() => { /* ignore */ });
-				}
 
 				reader.store.add(scopedInstantiationService.createInstance(
 					MenuWorkbenchButtonBar,
