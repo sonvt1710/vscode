@@ -69,6 +69,11 @@ export class DelegationSessionPickerActionItem extends SessionTypePickerActionIt
 		const allContributions = this.chatSessionsService.getAllChatSessionContributions();
 		const contribution = allContributions.find(contribution => getAgentSessionProvider(contribution.type) === type);
 
+		// In core VS Code, only allow delegation from local sessions
+		if (!this._isSessionsWindow && this.delegate.getActiveSessionProvider() !== AgentSessionProviders.Local) {
+			return false;
+		}
+
 		if (contribution && !contribution.canDelegate && this.delegate.getActiveSessionProvider() !== type /* Allow switching back to active type */) {
 			return false;
 		}
