@@ -22,7 +22,7 @@
   "main": "./out/extension.js",
   "type": "module",
   "capabilities": {
-    "virtualWorkspaces": false,
+    "virtualWorkspaces": true,
     "untrustedWorkspaces": {
       "supported": true
     }
