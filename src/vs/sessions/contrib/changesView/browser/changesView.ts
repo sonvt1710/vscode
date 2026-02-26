@@ -545,13 +545,13 @@ export class ChangesViewPane extends ViewPane {
 			}));
 
 			// Track container width to adapt button labels
-			const actionsContainerWidth = observableValue<number>(this, this.actionsContainer.clientWidth);
+			const actionsContainerWidth = observableValue<number>(this, this.bodyContainer.clientWidth);
 			const resizeObserver = new ResizeObserver(entries => {
 				for (const entry of entries) {
 					actionsContainerWidth.set(entry.contentRect.width, undefined);
 				}
 			});
-			resizeObserver.observe(this.actionsContainer);
+			resizeObserver.observe(this.bodyContainer);
 			this.renderDisposables.add({ dispose: () => resizeObserver.disconnect() });
 
 			// Check if a PR exists when the active session changes
