@@ -109,8 +109,6 @@ async function createPullRequest(gitAPI: GitAPI, sessionResource: vscode.Uri | u
 		// If the API call fails, fall through to open the creation URL
 	}
 
-	vscode.commands.executeCommand('setContext', 'github.hasOpenPullRequest', false);
-
 	// Build the GitHub PR creation URL
 	// Format: https://github.com/owner/repo/compare/base...head
 	const prUrl = `https://github.com/${remoteInfo.owner}/${remoteInfo.repo}/compare/${head.name}?expand=1`;
