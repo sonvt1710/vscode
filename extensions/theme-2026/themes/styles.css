@@ -593,7 +593,7 @@
 }
 
 .monaco-workbench .monaco-editor .sticky-widget .sticky-widget-lines-scrollable {
-	background: var(--vscode-editor-background) !important
+	background: var(--vscode-editor-background) !important;
 }
 
 .monaco-editor .sticky-widget .sticky-line-content {
