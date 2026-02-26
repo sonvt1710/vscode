@@ -102,7 +102,6 @@ async function checkOpenPullRequest(gitAPI: GitAPI, _sessionResource: vscode.Uri
 			owner: resolved.remoteInfo.owner,
 			repo: resolved.remoteInfo.repo,
 			head: `${resolved.remoteInfo.owner}:${resolved.head.name}`,
-			state: 'open',
 		});
 
 		vscode.commands.executeCommand('setContext', 'github.hasOpenPullRequest', pullRequests.length > 0);
@@ -145,7 +144,6 @@ async function createPullRequest(gitAPI: GitAPI, sessionResource: vscode.Uri | u
 			owner: remoteInfo.owner,
 			repo: remoteInfo.repo,
 			head: `${remoteInfo.owner}:${head.name}`,
-			state: 'open',
 		});
 
 		if (pullRequests.length > 0) {
