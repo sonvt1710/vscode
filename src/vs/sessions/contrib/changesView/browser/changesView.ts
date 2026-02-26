@@ -559,7 +559,7 @@ export class ChangesViewPane extends ViewPane {
 				const sessionResource = activeSessionResource.read(reader);
 				const containerWidth = actionsContainerWidth.read(reader);
 				const menuId = isSessionMenu ? MenuId.ChatEditingSessionChangesToolbar : MenuId.ChatEditingWidgetToolbar;
-				const useShortPrLabel = containerWidth < 350;
+				const useShortPrLabel = containerWidth < 150;
 
 				// Proactively check if a PR exists for the current session branch
 				if (isSessionMenu && sessionResource) {
