@@ -26,7 +26,7 @@ import { IKeybindingService } from '../../../../../platform/keybinding/common/ke
 import { ITelemetryService } from '../../../../../platform/telemetry/common/telemetry.js';
 import { IOpenerService } from '../../../../../platform/opener/common/opener.js';
 import { IWorkbenchContribution } from '../../../../common/contributions.js';
-import { ResourceContextKey } from '../../../../common/contextkeys.js';
+import { IsSessionsWindowContext, ResourceContextKey } from '../../../../common/contextkeys.js';
 import { IEditorService } from '../../../../services/editor/common/editorService.js';
 import { IFileService } from '../../../../../platform/files/common/files.js';
 import { IChatAgentService } from '../../common/participants/chatAgents.js';
@@ -432,11 +432,12 @@ export class CreateRemoteAgentJobAction {
 
 			const continuationTargetType = continuationTarget.type;
 
-			// When source and target session types differ, open a new session of
-			// the target type with the prompt and context instead of sending to
-			// the current (incompatible) session resource.
+			// When source and target session types differ in the sessions window,
+			// open a new session of the target type with the prompt and context
+			// instead of sending to the current (incompatible) session resource.
+			const isSessionsWindow = IsSessionsWindowContext.getValue(contextKeyService);
 			const sourceProvider = getAgentSessionProvider(sessionResource);
-			if (sourceProvider && sourceProvider !== continuationTargetType) {
+			if (isSessionsWindow && sourceProvider && sourceProvider !== continuationTargetType) {
 				const isSidebar = isIChatViewViewContext(widget.viewContext);
 				const actionId = isSidebar
 					? `workbench.action.chat.openNewSessionSidebar.${continuationTargetType}`
