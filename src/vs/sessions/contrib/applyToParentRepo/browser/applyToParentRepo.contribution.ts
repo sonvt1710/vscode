@@ -21,6 +21,15 @@ import { ISessionsManagementService } from '../../sessions/browser/sessionsManag
 import { IsSessionsWindowContext } from '../../../../workbench/common/contextkeys.js';
 import { isEqualOrParent, joinPath, relativePath } from '../../../../base/common/resources.js';
 import { ILogService } from '../../../../platform/log/common/log.js';
+import { URI } from '../../../../base/common/uri.js';
+
+/**
+ * Normalizes a URI to the `file` scheme so that path comparisons work
+ * even when the source URI uses a different scheme (e.g. `github-remote-file`).
+ */
+function toFileUri(uri: URI): URI {
+	return uri.scheme === 'file' ? uri : URI.file(uri.path);
+}
 
 const hasWorktreeAndRepositoryContextKey = new RawContextKey<boolean>('agentSessionHasWorktreeAndRepository', false, {
 	type: 'boolean',
@@ -104,8 +113,8 @@ class ApplyToParentRepoAction extends Action2 {
 
 				if (isDeletion) {
 					const originalUri = change.originalUri;
-					if (originalUri && isEqualOrParent(originalUri, worktreeRoot)) {
-						const relPath = relativePath(worktreeRoot, originalUri);
+					if (originalUri && isEqualOrParent(toFileUri(originalUri), worktreeRoot)) {
+						const relPath = relativePath(worktreeRoot, toFileUri(originalUri));
 						if (relPath) {
 							const targetUri = joinPath(repoRoot, relPath);
 							if (await fileService.exists(targetUri)) {
@@ -115,8 +124,8 @@ class ApplyToParentRepoAction extends Action2 {
 						}
 					}
 				} else {
-					if (isEqualOrParent(modifiedUri, worktreeRoot)) {
-						const relPath = relativePath(worktreeRoot, modifiedUri);
+					if (isEqualOrParent(toFileUri(modifiedUri), worktreeRoot)) {
+						const relPath = relativePath(worktreeRoot, toFileUri(modifiedUri));
 						if (relPath) {
 							const targetUri = joinPath(repoRoot, relPath);
 							await fileService.copy(modifiedUri, targetUri, true);
