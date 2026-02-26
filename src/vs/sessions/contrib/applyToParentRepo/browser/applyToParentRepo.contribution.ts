@@ -139,10 +139,19 @@ class ApplyToParentRepoAction extends Action2 {
 			}
 		}
 
+		const totalApplied = copiedCount + deletedCount;
 		if (errorCount > 0) {
-			notificationService.warn(localize('applyToParentRepoPartial', "Applied {0} file(s) to parent repo with {1} error(s).", copiedCount + deletedCount, errorCount));
-		} else if (copiedCount + deletedCount > 0) {
-			notificationService.info(localize('applyToParentRepoSuccess', "Applied {0} file(s) to parent repo.", copiedCount + deletedCount));
+			notificationService.warn(
+				totalApplied === 1
+					? localize('applyToParentRepoPartial1', "Applied 1 file to parent repo with {0} error(s).", errorCount)
+					: localize('applyToParentRepoPartialN', "Applied {0} files to parent repo with {1} error(s).", totalApplied, errorCount)
+			);
+		} else if (totalApplied > 0) {
+			notificationService.info(
+				totalApplied === 1
+					? localize('applyToParentRepoSuccess1', "Applied 1 file to parent repo.")
+					: localize('applyToParentRepoSuccessN', "Applied {0} files to parent repo.", totalApplied)
+			);
 		}
 	}
 }
