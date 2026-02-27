@@ -587,10 +587,10 @@ export class ChangesViewPane extends ViewPane {
 					}
 				));
 
-				// After layout, shorten the PR button label if it's too narrow
+				// After layout, shorten the PR button label if its text overflows
 				requestAnimationFrame(() => {
 					const prButton = this.actionsContainer?.querySelector('.flex-grow') as HTMLElement | null;
-					if (prButton && prButton.clientWidth < 150) {
+					if (prButton && prButton.scrollWidth > prButton.clientWidth) {
 						const labelSpan = prButton.querySelector('span:not(.codicon)') as HTMLElement | null;
 						if (labelSpan) {
 							labelSpan.textContent = localize('pullRequest.short', "PR");
