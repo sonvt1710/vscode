@@ -93,6 +93,7 @@ function resolveSessionRepo(gitAPI: GitAPI, sessionMetadata: { worktreePath?: st
 async function checkOpenPullRequest(gitAPI: GitAPI, _sessionResource: vscode.Uri | undefined, sessionMetadata: { worktreePath?: string } | undefined): Promise<void> {
 	const resolved = resolveSessionRepo(gitAPI, sessionMetadata, false);
 	if (!resolved) {
+		vscode.commands.executeCommand('setContext', 'github.hasOpenPullRequest', false);
 		return;
 	}
 
@@ -107,7 +108,7 @@ async function checkOpenPullRequest(gitAPI: GitAPI, _sessionResource: vscode.Uri
 
 		vscode.commands.executeCommand('setContext', 'github.hasOpenPullRequest', openPRs.length > 0);
 	} catch {
-		// Silently fail — leave context key unchanged
+		vscode.commands.executeCommand('setContext', 'github.hasOpenPullRequest', false);
 	}
 }
 
