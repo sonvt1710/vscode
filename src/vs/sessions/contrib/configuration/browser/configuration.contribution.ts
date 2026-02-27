@@ -10,6 +10,7 @@ Registry.as<IConfigurationRegistry>(Extensions.Configuration).registerDefaultCon
 	overrides: {
 		'chat.agentsControl.enabled': true,
 		'chat.agent.maxRequests': 1000,
+		'chat.customizationsMenu.userStoragePath': '~/.copilot',
 		'chat.restoreLastPanelSession': true,
 		'chat.unifiedAgentsBar.enabled': true,
 		'chat.viewSessions.enabled': false,
@@ -18,6 +19,8 @@ Registry.as<IConfigurationRegistry>(Extensions.Configuration).registerDefaultCon
 
 		'diffEditor.renderSideBySide': false,
 		'diffEditor.hideUnchangedRegions.enabled': true,
+
+		'extensions.ignoreRecommendations': true,
 
 		'files.autoSave': 'afterDelay',
 
@@ -33,6 +36,8 @@ Registry.as<IConfigurationRegistry>(Extensions.Configuration).registerDefaultCon
 		'inlineChat.affordance': 'editor',
 		'inlineChat.renderMode': 'hover',
 
+		'terminal.integrated.initialHint': false,
+
 		'workbench.editor.restoreEditors': false,
 		'workbench.editor.showTabs': 'single',
 		'workbench.startupEditor': 'none',
@@ -40,10 +45,9 @@ Registry.as<IConfigurationRegistry>(Extensions.Configuration).registerDefaultCon
 		'workbench.layoutControl.type': 'toggles',
 		'workbench.editor.useModal': 'all',
 		'workbench.panel.showLabels': false,
+
 		'window.menuStyle': 'custom',
 		'window.dialogStyle': 'custom',
-
-		'terminal.integrated.initialHint': false
 	},
 	donotCache: true,
 	preventExperimentOverride: true,
