@@ -553,13 +553,12 @@ export class ChangesViewPane extends ViewPane {
 				}
 			}));
 
-			const prLabelShort = observableValue<boolean>(this, false);
 			this.renderDisposables.add(autorun(reader => {
 				const { isSessionMenu, added, removed } = topLevelStats.read(reader);
 				const sessionResource = activeSessionResource.read(reader);
-				const useShortPrLabel = prLabelShort.read(reader);
 				const menuId = isSessionMenu ? MenuId.ChatEditingSessionChangesToolbar : MenuId.ChatEditingWidgetToolbar;
 
+				// Always render with full label first
 				reader.store.add(scopedInstantiationService.createInstance(
 					MenuWorkbenchButtonBar,
 					this.actionsContainer!,
@@ -578,7 +577,7 @@ export class ChangesViewPane extends ViewPane {
 								return { showIcon: true, showLabel: true, isSecondary: true, customClass: 'working-set-diff-stats', customLabel: diffStatsLabel };
 							}
 							if (action.id === 'github.createPullRequest' || action.id === 'github.openPullRequest') {
-								return { showIcon: true, showLabel: true, isSecondary: true, customClass: 'flex-grow', customLabel: useShortPrLabel ? localize('pullRequest.short', "PR") : undefined };
+								return { showIcon: true, showLabel: true, isSecondary: true, customClass: 'flex-grow' };
 							}
 							if (action.id === 'chatEditing.synchronizeChanges') {
 								return { showIcon: true, showLabel: true, isSecondary: true };
@@ -588,15 +587,16 @@ export class ChangesViewPane extends ViewPane {
 					}
 				));
 
-				// Check if the PR button is too narrow and switch to short label
-				if (!useShortPrLabel) {
-					requestAnimationFrame(() => {
-						const prButton = this.actionsContainer?.querySelector('.flex-grow') as HTMLElement | null;
-						if (prButton && prButton.clientWidth < 150) {
-							prLabelShort.set(true, undefined);
+				// After layout, shorten the PR button label if it's too narrow
+				requestAnimationFrame(() => {
+					const prButton = this.actionsContainer?.querySelector('.flex-grow') as HTMLElement | null;
+					if (prButton && prButton.clientWidth < 150) {
+						const labelSpan = prButton.querySelector('span:not(.codicon)') as HTMLElement | null;
+						if (labelSpan) {
+							labelSpan.textContent = localize('pullRequest.short', "PR");
 						}
-					});
-				}
+					}
+				});
 			}));
 		}
 
