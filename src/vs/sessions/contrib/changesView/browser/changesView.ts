@@ -588,11 +588,11 @@ export class ChangesViewPane extends ViewPane {
 					}
 				));
 
-				// After layout, check if the actions overflow and switch to short PR label
+				// Check if the PR button is too narrow and switch to short label
 				if (!useShortPrLabel) {
 					requestAnimationFrame(() => {
-						const container = this.actionsContainer!;
-						if (container.scrollWidth > container.clientWidth) {
+						const prButton = this.actionsContainer?.querySelector('.flex-grow') as HTMLElement | null;
+						if (prButton && prButton.clientWidth < 150) {
 							prLabelShort.set(true, undefined);
 						}
 					});
