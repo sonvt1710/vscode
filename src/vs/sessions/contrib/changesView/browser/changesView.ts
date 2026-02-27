@@ -558,7 +558,6 @@ export class ChangesViewPane extends ViewPane {
 				const sessionResource = activeSessionResource.read(reader);
 				const menuId = isSessionMenu ? MenuId.ChatEditingSessionChangesToolbar : MenuId.ChatEditingWidgetToolbar;
 
-				// Always render with full label first
 				reader.store.add(scopedInstantiationService.createInstance(
 					MenuWorkbenchButtonBar,
 					this.actionsContainer!,
@@ -586,17 +585,6 @@ export class ChangesViewPane extends ViewPane {
 						}
 					}
 				));
-
-				// After layout, shorten the PR button label if its text overflows
-				requestAnimationFrame(() => {
-					const prButton = this.actionsContainer?.querySelector('.flex-grow') as HTMLElement | null;
-					if (prButton && prButton.scrollWidth > prButton.clientWidth) {
-						const labelSpan = prButton.querySelector('span:not(.codicon)') as HTMLElement | null;
-						if (labelSpan) {
-							labelSpan.textContent = localize('pullRequest.short', "PR");
-						}
-					}
-				});
 			}));
 		}
 

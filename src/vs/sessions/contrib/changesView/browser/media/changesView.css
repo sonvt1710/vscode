@@ -98,7 +98,6 @@
 .changes-view-body .chat-editing-session-actions.outside-card {
 	margin-bottom: 8px;
 	justify-content: flex-end;
-	overflow: hidden;
 }
 
 /* Larger action buttons matching SCM ActionButton style */
