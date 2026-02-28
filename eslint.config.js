@@ -1955,7 +1955,8 @@ export default tseslint.config(
 						'vs/workbench/browser/**',
 						'vs/workbench/contrib/**',
 						'vs/workbench/services/*/~',
-						'vs/sessions/~'
+						'vs/sessions/~',
+						'vs/sessions/services/*/~'
 					]
 				},
 				{
@@ -1972,6 +1973,30 @@ export default tseslint.config(
 						'vs/workbench/contrib/*/~',
 						'vs/sessions/~',
 						'vs/sessions/contrib/*/~'
+					]
+				},
+				{
+					'target': 'src/vs/sessions/services/*/~',
+					'restrictions': [
+						'vs/base/~',
+						'vs/base/parts/*/~',
+						'vs/platform/*/~',
+						'vs/editor/~',
+						'vs/editor/contrib/*/~',
+						'vs/workbench/~',
+						'vs/workbench/services/*/~',
+						{
+							'when': 'test',
+							'pattern': 'vs/workbench/contrib/*/~'
+						}, // TODO@layers
+						'tas-client', // node module allowed even in /common/
+						'vscode-textmate', // node module allowed even in /common/
+						'@vscode/vscode-languagedetection', // node module allowed even in /common/
+						'@vscode/tree-sitter-wasm', // type import
+						{
+							'when': 'hasBrowser',
+							'pattern': '@xterm/xterm'
+						} // node module allowed even in /browser/
 					]
 				},
 			]
@@ -2110,6 +2135,29 @@ export default tseslint.config(
 				{ 'selector': 'interface', 'format': ['PascalCase'] }
 			],
 			'comma-dangle': ['warn', 'only-multiline']
+		}
+	},
+	// Extension main sources (excluding tests)
+	{
+		files: [
+			'extensions/**/*.ts',
+		],
+		ignores: [
+			'extensions/**/*.test.ts',
+		],
+		rules: {
+			// Ban dynamic require() and import() calls in extensions to ensure tree-shaking works
+			'no-restricted-syntax': [
+				'warn',
+				{
+					'selector': `CallExpression[callee.name='require'][arguments.0.type!='Literal']`,
+					'message': 'Use static imports instead of dynamic require() calls to enable tree-shaking.'
+				},
+				{
+					'selector': `ImportExpression[source.type!='Literal']`,
+					'message': 'Use static imports instead of dynamic import() calls to enable tree-shaking.'
+				},
+			],
 		}
 	},
 	// markdown-language-features

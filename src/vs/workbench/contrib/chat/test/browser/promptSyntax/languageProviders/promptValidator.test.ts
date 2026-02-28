@@ -110,6 +110,11 @@ suite('PromptValidator', () => {
 		disposables.add(toolService.registerToolData(conflictTool2));
 		disposables.add(conflictToolSet2.addTool(conflictTool2));
 
+		// Tool in the vscode toolset with a legacy name — for testing namespaced deprecated name resolution
+		const toolInVscodeSet = { id: 'browserTool', toolReferenceName: 'openIntegratedBrowser', legacyToolReferenceFullNames: ['openSimpleBrowser'], displayName: 'Open Integrated Browser', canBeReferencedInPrompt: true, modelDescription: 'Open browser', source: ToolDataSource.Internal, inputSchema: {} } satisfies IToolData;
+		disposables.add(toolService.registerToolData(toolInVscodeSet));
+		disposables.add(toolService.vscodeToolSet.addTool(toolInVscodeSet));
+
 		instaService.set(ILanguageModelToolsService, toolService);
 
 		const testModels: ILanguageModelChatMetadata[] = [
@@ -500,6 +505,41 @@ suite('PromptValidator', () => {
 			assert.strictEqual(markers[0].message, expectedMessage);
 		});
 
+		test('namespaced deprecated tool name in tools header shows rename hint', async () => {
+			// When a tool is in a toolset (e.g. vscode/openIntegratedBrowser) and has a legacy name,
+			// using the namespaced old name (vscode/openSimpleBrowser) should show the rename hint
+			const content = [
+				'---',
+				'description: "Test"',
+				`tools: ['vscode/openSimpleBrowser']`,
+				'---',
+			].join('\n');
+			const markers = await validate(content, PromptsType.agent);
+			assert.deepStrictEqual(
+				markers.map(m => ({ severity: m.severity, message: m.message })),
+				[
+					{ severity: MarkerSeverity.Info, message: `Tool or toolset 'vscode/openSimpleBrowser' has been renamed, use 'vscode/openIntegratedBrowser' instead.` },
+				]
+			);
+		});
+
+		test('bare deprecated tool name in tools header also shows rename hint', async () => {
+			// The bare (non-namespaced) legacy name should also resolve
+			const content = [
+				'---',
+				'description: "Test"',
+				`tools: ['openSimpleBrowser']`,
+				'---',
+			].join('\n');
+			const markers = await validate(content, PromptsType.agent);
+			assert.deepStrictEqual(
+				markers.map(m => ({ severity: m.severity, message: m.message })),
+				[
+					{ severity: MarkerSeverity.Info, message: `Tool or toolset 'openSimpleBrowser' has been renamed, use 'vscode/openIntegratedBrowser' instead.` },
+				]
+			);
+		});
+
 		test('unknown attribute in agent file', async () => {
 			const content = [
 				'---',
@@ -511,7 +551,7 @@ suite('PromptValidator', () => {
 			assert.deepStrictEqual(
 				markers.map(m => ({ severity: m.severity, message: m.message })),
 				[
-					{ severity: MarkerSeverity.Warning, message: `Attribute 'applyTo' is not supported in VS Code agent files. Supported: agents, argument-hint, description, disable-model-invocation, handoffs, model, name, target, tools, user-invocable.` },
+					{ severity: MarkerSeverity.Warning, message: `Attribute 'applyTo' is not supported in VS Code agent files. Supported: agents, argument-hint, description, disable-model-invocation, github, handoffs, model, name, target, tools, user-invocable.` },
 				]
 			);
 		});
@@ -623,8 +663,8 @@ suite('PromptValidator', () => {
 			const markers = await validate(content, PromptsType.agent);
 			const messages = markers.map(m => m.message);
 			assert.deepStrictEqual(messages, [
-				'Attribute \'model\' is not supported in custom GitHub Copilot agent files. Supported: description, infer, mcp-servers, name, target, tools.',
-				'Attribute \'handoffs\' is not supported in custom GitHub Copilot agent files. Supported: description, infer, mcp-servers, name, target, tools.',
+				'Attribute \'model\' is not supported in custom GitHub Copilot agent files. Supported: description, github, infer, mcp-servers, name, target, tools.',
+				'Attribute \'handoffs\' is not supported in custom GitHub Copilot agent files. Supported: description, github, infer, mcp-servers, name, target, tools.',
 			], 'Model and handoffs are not validated for github-copilot target');
 		});
 
@@ -658,6 +698,159 @@ suite('PromptValidator', () => {
 			assert.strictEqual(markers.length, 1);
 			assert.strictEqual(markers[0].severity, MarkerSeverity.Warning);
 			assert.ok(markers[0].message.includes(`Attribute 'argument-hint' is not supported`), 'Expected warning about unsupported attribute');
+		});
+
+		test('github-copilot agent with valid permissions', async () => {
+			const content = [
+				'---',
+				'name: "IssueTriage"',
+				'description: "Triages issues"',
+				'target: github-copilot',
+				`tools: ['read']`,
+				'github:',
+				'  permissions:',
+				'    issues: write',
+				'    contents: read',
+				'    metadata: read',
+				'---',
+				'Body',
+			].join('\n');
+			const markers = await validate(content, PromptsType.agent);
+			assert.deepStrictEqual(markers, []);
+		});
+
+		test('github-copilot agent with invalid permission scope', async () => {
+			const content = [
+				'---',
+				'name: "TestAgent"',
+				'description: "Test"',
+				'target: github-copilot',
+				`tools: ['read']`,
+				'github:',
+				'  permissions:',
+				'    unknown-scope: read',
+				'---',
+				'Body',
+			].join('\n');
+			const markers = await validate(content, PromptsType.agent);
+			assert.strictEqual(markers.length, 1);
+			assert.strictEqual(markers[0].severity, MarkerSeverity.Warning);
+			assert.ok(markers[0].message.includes('Unknown permission scope \'unknown-scope\''));
+		});
+
+		test('github-copilot agent with invalid permission value', async () => {
+			const content = [
+				'---',
+				'name: "TestAgent"',
+				'description: "Test"',
+				'target: github-copilot',
+				`tools: ['read']`,
+				'github:',
+				'  permissions:',
+				'    metadata: write',
+				'---',
+				'Body',
+			].join('\n');
+			const markers = await validate(content, PromptsType.agent);
+			assert.strictEqual(markers.length, 1);
+			assert.strictEqual(markers[0].severity, MarkerSeverity.Error);
+			assert.ok(markers[0].message.includes('Invalid permission value \'write\' for scope \'metadata\''));
+		});
+
+		test('github-copilot agent with non-map github attribute', async () => {
+			const content = [
+				'---',
+				'name: "TestAgent"',
+				'description: "Test"',
+				'target: github-copilot',
+				`tools: ['read']`,
+				'github: invalid',
+				'---',
+				'Body',
+			].join('\n');
+			const markers = await validate(content, PromptsType.agent);
+			assert.strictEqual(markers.length, 1);
+			assert.strictEqual(markers[0].severity, MarkerSeverity.Error);
+			assert.strictEqual(markers[0].message, 'The \'github\' attribute must be an object.');
+		});
+
+		test('github-copilot agent with unknown github sub-property', async () => {
+			const content = [
+				'---',
+				'name: "TestAgent"',
+				'description: "Test"',
+				'target: github-copilot',
+				`tools: ['read']`,
+				'github:',
+				'  unknown: value',
+				'---',
+				'Body',
+			].join('\n');
+			const markers = await validate(content, PromptsType.agent);
+			assert.strictEqual(markers.length, 1);
+			assert.strictEqual(markers[0].severity, MarkerSeverity.Warning);
+			assert.ok(markers[0].message.includes('Unknown property \'unknown\''));
+		});
+
+		test('undefined target agent with valid github permissions', async () => {
+			const content = [
+				'---',
+				'description: "Agent without target"',
+				'github:',
+				'  permissions:',
+				'    issues: write',
+				'    contents: read',
+				'---',
+				'Body',
+			].join('\n');
+			const markers = await validate(content, PromptsType.agent);
+			assert.deepStrictEqual(markers, []);
+		});
+
+		test('undefined target agent with invalid github permission scope', async () => {
+			const content = [
+				'---',
+				'description: "Agent without target"',
+				'github:',
+				'  permissions:',
+				'    unknown-scope: read',
+				'---',
+				'Body',
+			].join('\n');
+			const markers = await validate(content, PromptsType.agent);
+			assert.strictEqual(markers.length, 1);
+			assert.strictEqual(markers[0].severity, MarkerSeverity.Warning);
+			assert.ok(markers[0].message.includes('Unknown permission scope \'unknown-scope\''));
+		});
+
+		test('undefined target agent with invalid github permission value', async () => {
+			const content = [
+				'---',
+				'description: "Agent without target"',
+				'github:',
+				'  permissions:',
+				'    metadata: write',
+				'---',
+				'Body',
+			].join('\n');
+			const markers = await validate(content, PromptsType.agent);
+			assert.strictEqual(markers.length, 1);
+			assert.strictEqual(markers[0].severity, MarkerSeverity.Error);
+			assert.ok(markers[0].message.includes('Invalid permission value \'write\' for scope \'metadata\''));
+		});
+
+		test('undefined target agent with non-map github attribute', async () => {
+			const content = [
+				'---',
+				'description: "Agent without target"',
+				'github: invalid',
+				'---',
+				'Body',
+			].join('\n');
+			const markers = await validate(content, PromptsType.agent);
+			assert.strictEqual(markers.length, 1);
+			assert.strictEqual(markers[0].severity, MarkerSeverity.Error);
+			assert.strictEqual(markers[0].message, 'The \'github\' attribute must be an object.');
 		});
 
 		test('vscode target agent validates normally', async () => {
@@ -1531,7 +1724,7 @@ suite('PromptValidator', () => {
 			assert.deepEqual(actual, [
 				{ message: `Unknown tool or toolset 'ms-azuretools.vscode-azure-github-copilot/azure_recommend_custom_modes'.`, startColumn: 7, endColumn: 77 },
 				{ message: `Tool or toolset 'github.vscode-pull-request-github/suggest-fix' also needs to be enabled in the header.`, startColumn: 7, endColumn: 52 },
-				{ message: `Unknown tool or toolset 'openSimpleBrowser'.`, startColumn: 7, endColumn: 24 },
+				{ message: `Tool or toolset 'openSimpleBrowser' has been renamed, use 'vscode/openIntegratedBrowser' instead.`, startColumn: 7, endColumn: 24 },
 			]);
 		});
 

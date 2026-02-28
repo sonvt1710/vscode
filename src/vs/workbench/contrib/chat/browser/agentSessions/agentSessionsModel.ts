@@ -153,7 +153,6 @@ interface IAgentSessionState {
 export const enum AgentSessionSection {
 
 	// Default Grouping (by date)
-	InProgress = 'inProgress',
 	Today = 'today',
 	Yesterday = 'yesterday',
 	Week = 'week',
@@ -428,10 +427,18 @@ export class AgentSessionsModel extends Disposable implements IAgentSessionsMode
 	private registerListeners(): void {
 
 		// Sessions changes
-		this._register(this.chatSessionsService.onDidChangeItemsProviders(({ chatSessionType }) => this.resolve(chatSessionType)));
-		this._register(this.chatSessionsService.onDidChangeAvailability(() => this.resolve(undefined)));
-		this._register(this.chatSessionsService.onDidChangeSessionItems(({ chatSessionType }) => this.updateItems([chatSessionType], CancellationToken.None)));
-		this._register(this.workspaceContextService.onDidChangeWorkspaceFolders(() => this.resolve(undefined)));
+		this._register(this.chatSessionsService.onDidChangeItemsProviders(({ chatSessionType }) => {
+			this.resolve(chatSessionType);
+		}));
+		this._register(this.chatSessionsService.onDidChangeAvailability(() => {
+			this.resolve(undefined);
+		}));
+		this._register(this.chatSessionsService.onDidChangeSessionItems(({ chatSessionType }) => {
+			this.updateItems([chatSessionType], CancellationToken.None);
+		}));
+		this._register(this.workspaceContextService.onDidChangeWorkspaceFolders(() => {
+			this.resolve(undefined);
+		}));
 
 		// State
 		this._register(this.storageService.onWillSaveState(() => {

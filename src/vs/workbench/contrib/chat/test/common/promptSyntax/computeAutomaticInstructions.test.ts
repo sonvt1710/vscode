@@ -44,6 +44,10 @@ import { IRemoteAgentService } from '../../../../../../workbench/services/remote
 import { basename } from '../../../../../../base/common/resources.js';
 import { match } from '../../../../../../base/common/glob.js';
 import { ChatModeKind } from '../../../common/constants.js';
+import { IContextKeyService } from '../../../../../../platform/contextkey/common/contextkey.js';
+import { MockContextKeyService } from '../../../../../../platform/keybinding/test/common/mockKeybindingService.js';
+import { IAgentPluginService } from '../../../common/plugins/agentPluginService.js';
+import { observableValue } from '../../../../../../base/common/observable.js';
 
 suite('ComputeAutomaticInstructions', () => {
 	const disposables = ensureNoDisposablesAreLeakedInTestSuite();
@@ -175,6 +179,14 @@ suite('ComputeAutomaticInstructions', () => {
 			getEnvironment: () => Promise.resolve(null),
 		});
 
+		instaService.stub(IContextKeyService, new MockContextKeyService());
+
+		instaService.stub(IAgentPluginService, {
+			plugins: observableValue('testPlugins', []),
+			allPlugins: observableValue('testAllPlugins', []),
+			setPluginEnabled: () => { },
+		});
+
 		service = disposables.add(instaService.createInstance(PromptsService));
 		instaService.stub(IPromptsService, service);
 	});
@@ -227,7 +239,7 @@ suite('ComputeAutomaticInstructions', () => {
 				},
 			]);
 			{
-				const contextComputer = instaService.createInstance(ComputeAutomaticInstructions, ChatModeKind.Agent, undefined, undefined);
+				const contextComputer = instaService.createInstance(ComputeAutomaticInstructions, ChatModeKind.Agent, undefined, undefined, undefined);
 				const variables = new ChatRequestVariableSet();
 				variables.add(toFileVariableEntry(URI.joinPath(rootFolderUri, 'src/file.ts')));
 
@@ -244,7 +256,7 @@ suite('ComputeAutomaticInstructions', () => {
 				testConfigService.setUserConfiguration(PromptsConfig.INCLUDE_APPLYING_INSTRUCTIONS, false);
 				testConfigService.setUserConfiguration(PromptsConfig.USE_COPILOT_INSTRUCTION_FILES, true);
 				testConfigService.setUserConfiguration(PromptsConfig.USE_AGENT_MD, true);
-				const contextComputer = instaService.createInstance(ComputeAutomaticInstructions, ChatModeKind.Agent, undefined, undefined);
+				const contextComputer = instaService.createInstance(ComputeAutomaticInstructions, ChatModeKind.Agent, undefined, undefined, undefined);
 				const variables = new ChatRequestVariableSet();
 				variables.add(toFileVariableEntry(URI.joinPath(rootFolderUri, 'src/file.ts')));
 
@@ -261,7 +273,7 @@ suite('ComputeAutomaticInstructions', () => {
 				testConfigService.setUserConfiguration(PromptsConfig.INCLUDE_APPLYING_INSTRUCTIONS, true);
 				testConfigService.setUserConfiguration(PromptsConfig.USE_COPILOT_INSTRUCTION_FILES, false);
 				testConfigService.setUserConfiguration(PromptsConfig.USE_AGENT_MD, true);
-				const contextComputer = instaService.createInstance(ComputeAutomaticInstructions, ChatModeKind.Agent, undefined, undefined);
+				const contextComputer = instaService.createInstance(ComputeAutomaticInstructions, ChatModeKind.Agent, undefined, undefined, undefined);
 				const variables = new ChatRequestVariableSet();
 				variables.add(toFileVariableEntry(URI.joinPath(rootFolderUri, 'src/file.ts')));
 
@@ -278,7 +290,7 @@ suite('ComputeAutomaticInstructions', () => {
 				testConfigService.setUserConfiguration(PromptsConfig.INCLUDE_APPLYING_INSTRUCTIONS, true);
 				testConfigService.setUserConfiguration(PromptsConfig.USE_COPILOT_INSTRUCTION_FILES, true);
 				testConfigService.setUserConfiguration(PromptsConfig.USE_AGENT_MD, false);
-				const contextComputer = instaService.createInstance(ComputeAutomaticInstructions, ChatModeKind.Agent, undefined, undefined);
+				const contextComputer = instaService.createInstance(ComputeAutomaticInstructions, ChatModeKind.Agent, undefined, undefined, undefined);
 				const variables = new ChatRequestVariableSet();
 				variables.add(toFileVariableEntry(URI.joinPath(rootFolderUri, 'src/file.ts')));
 
@@ -328,7 +340,7 @@ suite('ComputeAutomaticInstructions', () => {
 				},
 			]);
 
-			const contextComputer = instaService.createInstance(ComputeAutomaticInstructions, ChatModeKind.Agent, undefined, undefined);
+			const contextComputer = instaService.createInstance(ComputeAutomaticInstructions, ChatModeKind.Agent, undefined, undefined, undefined);
 			const variables = new ChatRequestVariableSet();
 			variables.add(toFileVariableEntry(URI.joinPath(rootFolderUri, 'src/file.ts')));
 
@@ -363,7 +375,7 @@ suite('ComputeAutomaticInstructions', () => {
 				},
 			]);
 
-			const contextComputer = instaService.createInstance(ComputeAutomaticInstructions, ChatModeKind.Edit, undefined, undefined);
+			const contextComputer = instaService.createInstance(ComputeAutomaticInstructions, ChatModeKind.Edit, undefined, undefined, undefined);
 			const variables = new ChatRequestVariableSet();
 			variables.add(toFileVariableEntry(URI.joinPath(rootFolderUri, 'src/file.ts')));
 
@@ -398,7 +410,7 @@ suite('ComputeAutomaticInstructions', () => {
 				},
 			]);
 
-			const contextComputer = instaService.createInstance(ComputeAutomaticInstructions, ChatModeKind.Agent, undefined, undefined);
+			const contextComputer = instaService.createInstance(ComputeAutomaticInstructions, ChatModeKind.Agent, undefined, undefined, undefined);
 			const variables = new ChatRequestVariableSet();
 			variables.add(toFileVariableEntry(URI.joinPath(rootFolderUri, 'src/file.ts')));
 
@@ -440,7 +452,7 @@ suite('ComputeAutomaticInstructions', () => {
 				},
 			]);
 
-			const contextComputer = instaService.createInstance(ComputeAutomaticInstructions, ChatModeKind.Agent, undefined, undefined);
+			const contextComputer = instaService.createInstance(ComputeAutomaticInstructions, ChatModeKind.Agent, undefined, undefined, undefined);
 			const variables = new ChatRequestVariableSet();
 			variables.add(toFileVariableEntry(URI.joinPath(rootFolderUri, 'src/file.ts')));
 
@@ -476,7 +488,7 @@ suite('ComputeAutomaticInstructions', () => {
 				},
 			]);
 
-			const contextComputer = instaService.createInstance(ComputeAutomaticInstructions, ChatModeKind.Agent, undefined, undefined);
+			const contextComputer = instaService.createInstance(ComputeAutomaticInstructions, ChatModeKind.Agent, undefined, undefined, undefined);
 			const variables = new ChatRequestVariableSet();
 			variables.add(toFileVariableEntry(URI.joinPath(rootFolderUri, 'src/component.tsx')));
 
@@ -512,7 +524,7 @@ suite('ComputeAutomaticInstructions', () => {
 				},
 			]);
 
-			const contextComputer = instaService.createInstance(ComputeAutomaticInstructions, ChatModeKind.Agent, undefined, undefined);
+			const contextComputer = instaService.createInstance(ComputeAutomaticInstructions, ChatModeKind.Agent, undefined, undefined, undefined);
 			const variables = new ChatRequestVariableSet();
 			variables.add(toFileVariableEntry(URI.joinPath(rootFolderUri, 'src/file1.ts')));
 			variables.add(toFileVariableEntry(URI.joinPath(rootFolderUri, 'src/file2.ts')));
@@ -546,7 +558,7 @@ suite('ComputeAutomaticInstructions', () => {
 				},
 			]);
 
-			const contextComputer = instaService.createInstance(ComputeAutomaticInstructions, ChatModeKind.Agent, undefined, undefined);
+			const contextComputer = instaService.createInstance(ComputeAutomaticInstructions, ChatModeKind.Agent, undefined, undefined, undefined);
 			const variables = new ChatRequestVariableSet();
 			variables.add(toFileVariableEntry(URI.joinPath(rootFolderUri, 'src/file.ts')));
 
@@ -578,7 +590,7 @@ suite('ComputeAutomaticInstructions', () => {
 				},
 			]);
 
-			const contextComputer = instaService.createInstance(ComputeAutomaticInstructions, ChatModeKind.Agent, undefined, undefined);
+			const contextComputer = instaService.createInstance(ComputeAutomaticInstructions, ChatModeKind.Agent, undefined, undefined, undefined);
 			const variables = new ChatRequestVariableSet();
 			variables.add(toFileVariableEntry(URI.joinPath(rootFolderUri, 'src/file.ts')));
 
@@ -626,7 +638,7 @@ suite('ComputeAutomaticInstructions', () => {
 				},
 			]);
 
-			const contextComputer = instaService.createInstance(ComputeAutomaticInstructions, ChatModeKind.Agent, undefined, undefined);
+			const contextComputer = instaService.createInstance(ComputeAutomaticInstructions, ChatModeKind.Agent, undefined, undefined, undefined);
 			const variables = new ChatRequestVariableSet();
 			variables.add(toFileVariableEntry(URI.joinPath(rootFolderUri, 'src/api/handler.ts')));
 
@@ -674,7 +686,7 @@ suite('ComputeAutomaticInstructions', () => {
 				},
 			]);
 
-			const contextComputer = instaService.createInstance(ComputeAutomaticInstructions, ChatModeKind.Agent, undefined, undefined);
+			const contextComputer = instaService.createInstance(ComputeAutomaticInstructions, ChatModeKind.Agent, undefined, undefined, undefined);
 			const variables = new ChatRequestVariableSet();
 			variables.add(toFileVariableEntry(URI.joinPath(rootFolderUri, 'src/component.tsx')));
 
@@ -714,7 +726,7 @@ suite('ComputeAutomaticInstructions', () => {
 				},
 			]);
 
-			const contextComputer = instaService.createInstance(ComputeAutomaticInstructions, ChatModeKind.Agent, undefined, undefined);
+			const contextComputer = instaService.createInstance(ComputeAutomaticInstructions, ChatModeKind.Agent, undefined, undefined, undefined);
 			const variables = new ChatRequestVariableSet();
 			variables.add(toFileVariableEntry(URI.joinPath(rootFolderUri, 'lib/utils.ts')));
 
@@ -761,7 +773,7 @@ suite('ComputeAutomaticInstructions', () => {
 			const mainUri = URI.joinPath(rootFolderUri, '.github/instructions/main.instructions.md');
 			const referencedUri = URI.joinPath(rootFolderUri, '.github/instructions/referenced.instructions.md');
 
-			const contextComputer = instaService.createInstance(ComputeAutomaticInstructions, ChatModeKind.Agent, undefined, undefined);
+			const contextComputer = instaService.createInstance(ComputeAutomaticInstructions, ChatModeKind.Agent, undefined, undefined, undefined);
 			const variables = new ChatRequestVariableSet();
 			variables.add(toFileVariableEntry(URI.joinPath(rootFolderUri, 'src/file.ts')));
 
@@ -797,7 +809,7 @@ suite('ComputeAutomaticInstructions', () => {
 
 			const mainUri = URI.joinPath(rootFolderUri, '.github/instructions/main.instructions.md');
 
-			const contextComputer = instaService.createInstance(ComputeAutomaticInstructions, ChatModeKind.Agent, undefined, undefined);
+			const contextComputer = instaService.createInstance(ComputeAutomaticInstructions, ChatModeKind.Agent, undefined, undefined, undefined);
 			const variables = new ChatRequestVariableSet();
 			variables.add(toFileVariableEntry(URI.joinPath(rootFolderUri, 'src/file.ts')));
 
@@ -846,7 +858,7 @@ suite('ComputeAutomaticInstructions', () => {
 			const level2Uri = URI.joinPath(rootFolderUri, '.github/instructions/level2.instructions.md');
 			const level3Uri = URI.joinPath(rootFolderUri, '.github/instructions/level3.instructions.md');
 
-			const contextComputer = instaService.createInstance(ComputeAutomaticInstructions, ChatModeKind.Agent, undefined, undefined);
+			const contextComputer = instaService.createInstance(ComputeAutomaticInstructions, ChatModeKind.Agent, undefined, undefined, undefined);
 			const variables = new ChatRequestVariableSet();
 			variables.add(toFileVariableEntry(URI.joinPath(rootFolderUri, 'src/file.ts')));
 
@@ -902,7 +914,7 @@ suite('ComputeAutomaticInstructions', () => {
 			} as unknown as ITelemetryService;
 			instaService.stub(ITelemetryService, mockTelemetryService);
 
-			const contextComputer = instaService.createInstance(ComputeAutomaticInstructions, ChatModeKind.Agent, undefined, undefined);
+			const contextComputer = instaService.createInstance(ComputeAutomaticInstructions, ChatModeKind.Agent, undefined, undefined, undefined);
 			const variables = new ChatRequestVariableSet();
 			variables.add(toFileVariableEntry(URI.joinPath(rootFolderUri, 'src/file.ts')));
 
@@ -959,7 +971,7 @@ suite('ComputeAutomaticInstructions', () => {
 			} as unknown as ITelemetryService;
 			instaService.stub(ITelemetryService, mockTelemetryService);
 
-			const contextComputer = instaService.createInstance(ComputeAutomaticInstructions, ChatModeKind.Agent, undefined, undefined);
+			const contextComputer = instaService.createInstance(ComputeAutomaticInstructions, ChatModeKind.Agent, undefined, undefined, undefined);
 			const variables = new ChatRequestVariableSet();
 			variables.add(toFileVariableEntry(URI.joinPath(rootFolderUri, 'src/file.ts')));
 
@@ -1005,7 +1017,7 @@ suite('ComputeAutomaticInstructions', () => {
 			} as unknown as ITelemetryService;
 			instaService.stub(ITelemetryService, mockTelemetryService);
 
-			const contextComputer = instaService.createInstance(ComputeAutomaticInstructions, ChatModeKind.Agent, undefined, undefined);
+			const contextComputer = instaService.createInstance(ComputeAutomaticInstructions, ChatModeKind.Agent, undefined, undefined, undefined);
 			const variables = new ChatRequestVariableSet();
 			variables.add(toFileVariableEntry(URI.joinPath(rootFolderUri, 'src/file.ts')));
 
@@ -1067,7 +1079,8 @@ suite('ComputeAutomaticInstructions', () => {
 				ComputeAutomaticInstructions,
 				ChatModeKind.Agent,
 				{ 'vscode_runSubagent': true },
-				['*']
+				['*'],
+				undefined
 			);
 			const variables = new ChatRequestVariableSet();
 			variables.add(toFileVariableEntry(URI.joinPath(rootFolderUri, 'src/file.ts')));
@@ -1120,6 +1133,7 @@ suite('ComputeAutomaticInstructions', () => {
 				ComputeAutomaticInstructions,
 				ChatModeKind.Agent,
 				{ 'vscode_readFile': true }, // Enable readFile tool
+				undefined,
 				undefined
 			);
 			const variables = new ChatRequestVariableSet();
@@ -1210,7 +1224,8 @@ suite('ComputeAutomaticInstructions', () => {
 				ComputeAutomaticInstructions,
 				ChatModeKind.Agent,
 				{ 'vscode_runSubagent': true }, // Enable runSubagent tool
-				['*'] // Enable all subagents
+				['*'], // Enable all subagents
+				undefined
 			);
 			const variables = new ChatRequestVariableSet();
 
@@ -1272,6 +1287,7 @@ suite('ComputeAutomaticInstructions', () => {
 				ComputeAutomaticInstructions,
 				ChatModeKind.Agent,
 				{ 'vscode_readFile': true }, // Enable readFile tool
+				undefined,
 				undefined
 			);
 			const variables = new ChatRequestVariableSet();
@@ -1322,6 +1338,7 @@ suite('ComputeAutomaticInstructions', () => {
 				ComputeAutomaticInstructions,
 				ChatModeKind.Agent,
 				undefined, // No tools available
+				undefined,
 				undefined
 			);
 			const variables = new ChatRequestVariableSet();
@@ -1358,6 +1375,7 @@ suite('ComputeAutomaticInstructions', () => {
 				ComputeAutomaticInstructions,
 				ChatModeKind.Agent,
 				{ 'vscode_readFile': true }, // Enable readFile tool
+				undefined,
 				undefined
 			);
 			const variables = new ChatRequestVariableSet();
@@ -1411,6 +1429,7 @@ suite('ComputeAutomaticInstructions', () => {
 				ComputeAutomaticInstructions,
 				ChatModeKind.Agent,
 				{ 'vscode_readFile': true }, // Enable readFile tool
+				undefined,
 				undefined
 			);
 			const variables = new ChatRequestVariableSet();
@@ -1442,7 +1461,7 @@ suite('ComputeAutomaticInstructions', () => {
 
 			workspaceContextService.setWorkspace(testWorkspace(rootFolderUri));
 
-			const contextComputer = instaService.createInstance(ComputeAutomaticInstructions, ChatModeKind.Agent, undefined, undefined);
+			const contextComputer = instaService.createInstance(ComputeAutomaticInstructions, ChatModeKind.Agent, undefined, undefined, undefined);
 			const variables = new ChatRequestVariableSet();
 
 			await contextComputer.collect(variables, CancellationToken.None);
@@ -1474,7 +1493,7 @@ suite('ComputeAutomaticInstructions', () => {
 				},
 			]);
 
-			const contextComputer = instaService.createInstance(ComputeAutomaticInstructions, ChatModeKind.Agent, undefined, undefined);
+			const contextComputer = instaService.createInstance(ComputeAutomaticInstructions, ChatModeKind.Agent, undefined, undefined, undefined);
 			const variables = new ChatRequestVariableSet();
 			variables.add(toFileVariableEntry(URI.joinPath(rootFolderUri, 'src/file.ts')));
 
@@ -1497,7 +1516,7 @@ suite('ComputeAutomaticInstructions', () => {
 				},
 			]);
 
-			const contextComputer = instaService.createInstance(ComputeAutomaticInstructions, ChatModeKind.Agent, undefined, undefined);
+			const contextComputer = instaService.createInstance(ComputeAutomaticInstructions, ChatModeKind.Agent, undefined, undefined, undefined);
 			const variables = new ChatRequestVariableSet();
 			variables.add(toFileVariableEntry(URI.joinPath(rootFolderUri, 'src/file.ts')));
 
@@ -1537,7 +1556,7 @@ suite('ComputeAutomaticInstructions', () => {
 
 		// Test when USE_CLAUDE_MD is true
 		testConfigService.setUserConfiguration(PromptsConfig.USE_CLAUDE_MD, true);
-		const contextComputer = instaService.createInstance(ComputeAutomaticInstructions, ChatModeKind.Agent, undefined, undefined);
+		const contextComputer = instaService.createInstance(ComputeAutomaticInstructions, ChatModeKind.Agent, undefined, undefined, undefined);
 		const variables = new ChatRequestVariableSet();
 		variables.add(toFileVariableEntry(URI.joinPath(rootFolderUri, 'src/file.ts')));
 
@@ -1549,7 +1568,7 @@ suite('ComputeAutomaticInstructions', () => {
 
 		// Test when USE_CLAUDE_MD is false
 		testConfigService.setUserConfiguration(PromptsConfig.USE_CLAUDE_MD, false);
-		const contextComputer2 = instaService.createInstance(ComputeAutomaticInstructions, ChatModeKind.Agent, undefined, undefined);
+		const contextComputer2 = instaService.createInstance(ComputeAutomaticInstructions, ChatModeKind.Agent, undefined, undefined, undefined);
 		const variables2 = new ChatRequestVariableSet();
 		variables2.add(toFileVariableEntry(URI.joinPath(rootFolderUri, 'src/file.ts')));
 
@@ -1584,7 +1603,7 @@ suite('ComputeAutomaticInstructions', () => {
 
 		// Test when USE_CLAUDE_MD is true
 		testConfigService.setUserConfiguration(PromptsConfig.USE_CLAUDE_MD, true);
-		const contextComputer = instaService.createInstance(ComputeAutomaticInstructions, ChatModeKind.Agent, undefined, undefined);
+		const contextComputer = instaService.createInstance(ComputeAutomaticInstructions, ChatModeKind.Agent, undefined, undefined, undefined);
 		const variables = new ChatRequestVariableSet();
 		variables.add(toFileVariableEntry(URI.joinPath(rootFolderUri, 'src/file.ts')));
 
@@ -1596,7 +1615,7 @@ suite('ComputeAutomaticInstructions', () => {
 
 		// Test when USE_CLAUDE_MD is false
 		testConfigService.setUserConfiguration(PromptsConfig.USE_CLAUDE_MD, false);
-		const contextComputer2 = instaService.createInstance(ComputeAutomaticInstructions, ChatModeKind.Agent, undefined, undefined);
+		const contextComputer2 = instaService.createInstance(ComputeAutomaticInstructions, ChatModeKind.Agent, undefined, undefined, undefined);
 		const variables2 = new ChatRequestVariableSet();
 		variables2.add(toFileVariableEntry(URI.joinPath(rootFolderUri, 'src/file.ts')));
 
@@ -1631,7 +1650,7 @@ suite('ComputeAutomaticInstructions', () => {
 
 		// Test when USE_CLAUDE_MD is true
 		testConfigService.setUserConfiguration(PromptsConfig.USE_CLAUDE_MD, true);
-		const contextComputer = instaService.createInstance(ComputeAutomaticInstructions, ChatModeKind.Agent, undefined, undefined);
+		const contextComputer = instaService.createInstance(ComputeAutomaticInstructions, ChatModeKind.Agent, undefined, undefined, undefined);
 		const variables = new ChatRequestVariableSet();
 		variables.add(toFileVariableEntry(URI.joinPath(rootFolderUri, 'src/file.ts')));
 
@@ -1643,7 +1662,7 @@ suite('ComputeAutomaticInstructions', () => {
 
 		// Test when USE_CLAUDE_MD is false
 		testConfigService.setUserConfiguration(PromptsConfig.USE_CLAUDE_MD, false);
-		const contextComputer2 = instaService.createInstance(ComputeAutomaticInstructions, ChatModeKind.Agent, undefined, undefined);
+		const contextComputer2 = instaService.createInstance(ComputeAutomaticInstructions, ChatModeKind.Agent, undefined, undefined, undefined);
 		const variables2 = new ChatRequestVariableSet();
 		variables2.add(toFileVariableEntry(URI.joinPath(rootFolderUri, 'src/file.ts')));
 
@@ -1694,7 +1713,7 @@ suite('ComputeAutomaticInstructions', () => {
 			},
 		]);
 
-		const contextComputer = instaService.createInstance(ComputeAutomaticInstructions, ChatModeKind.Agent, undefined, undefined);
+		const contextComputer = instaService.createInstance(ComputeAutomaticInstructions, ChatModeKind.Agent, undefined, undefined, undefined);
 		const variables = new ChatRequestVariableSet();
 		variables.add(toFileVariableEntry(URI.joinPath(rootFolder1Uri, 'src/file.ts')));
 		variables.add(toFileVariableEntry(URI.joinPath(rootFolder2Uri, 'src/file.js')));
@@ -1741,7 +1760,7 @@ suite('ComputeAutomaticInstructions', () => {
 
 		// Test when USE_CLAUDE_MD is true
 		testConfigService.setUserConfiguration(PromptsConfig.USE_CLAUDE_MD, true);
-		const contextComputer = instaService.createInstance(ComputeAutomaticInstructions, ChatModeKind.Agent, undefined, undefined);
+		const contextComputer = instaService.createInstance(ComputeAutomaticInstructions, ChatModeKind.Agent, undefined, undefined, undefined);
 		const variables = new ChatRequestVariableSet();
 		variables.add(toFileVariableEntry(URI.joinPath(rootFolder1Uri, 'src/file.ts')));
 		variables.add(toFileVariableEntry(URI.joinPath(rootFolder2Uri, 'src/file.js')));
@@ -1787,7 +1806,7 @@ suite('ComputeAutomaticInstructions', () => {
 
 		// Test when USE_CLAUDE_MD is true
 		testConfigService.setUserConfiguration(PromptsConfig.USE_CLAUDE_MD, true);
-		const contextComputer = instaService.createInstance(ComputeAutomaticInstructions, ChatModeKind.Agent, undefined, undefined);
+		const contextComputer = instaService.createInstance(ComputeAutomaticInstructions, ChatModeKind.Agent, undefined, undefined, undefined);
 		const variables = new ChatRequestVariableSet();
 		variables.add(toFileVariableEntry(URI.joinPath(rootFolder1Uri, 'src/file.ts')));
 		variables.add(toFileVariableEntry(URI.joinPath(rootFolder2Uri, 'src/file.js')));
@@ -1841,7 +1860,7 @@ suite('ComputeAutomaticInstructions', () => {
 
 		// Test when USE_CLAUDE_MD is true
 		testConfigService.setUserConfiguration(PromptsConfig.USE_CLAUDE_MD, true);
-		const contextComputer = instaService.createInstance(ComputeAutomaticInstructions, ChatModeKind.Agent, undefined, undefined);
+		const contextComputer = instaService.createInstance(ComputeAutomaticInstructions, ChatModeKind.Agent, undefined, undefined, undefined);
 		const variables = new ChatRequestVariableSet();
 		variables.add(toFileVariableEntry(URI.joinPath(rootFolder1Uri, 'src/file.ts')));
 		variables.add(toFileVariableEntry(URI.joinPath(rootFolder2Uri, 'src/file.js')));
@@ -1889,7 +1908,7 @@ suite('ComputeAutomaticInstructions', () => {
 
 		// Test when USE_CLAUDE_MD is false
 		testConfigService.setUserConfiguration(PromptsConfig.USE_CLAUDE_MD, false);
-		const contextComputer = instaService.createInstance(ComputeAutomaticInstructions, ChatModeKind.Agent, undefined, undefined);
+		const contextComputer = instaService.createInstance(ComputeAutomaticInstructions, ChatModeKind.Agent, undefined, undefined, undefined);
 		const variables = new ChatRequestVariableSet();
 		variables.add(toFileVariableEntry(URI.joinPath(rootFolder1Uri, 'src/file.ts')));
 		variables.add(toFileVariableEntry(URI.joinPath(rootFolder2Uri, 'src/file.js')));
@@ -1943,7 +1962,7 @@ suite('ComputeAutomaticInstructions', () => {
 
 		// Test when USE_CLAUDE_MD is true
 		testConfigService.setUserConfiguration(PromptsConfig.USE_CLAUDE_MD, true);
-		const contextComputer = instaService.createInstance(ComputeAutomaticInstructions, ChatModeKind.Agent, undefined, undefined);
+		const contextComputer = instaService.createInstance(ComputeAutomaticInstructions, ChatModeKind.Agent, undefined, undefined, undefined);
 		const variables = new ChatRequestVariableSet();
 		variables.add(toFileVariableEntry(URI.joinPath(rootFolder1Uri, 'src/file.ts')));
 		variables.add(toFileVariableEntry(URI.joinPath(rootFolder2Uri, 'src/file.js')));
@@ -1999,7 +2018,7 @@ suite('ComputeAutomaticInstructions', () => {
 		testConfigService.setUserConfiguration(PromptsConfig.USE_AGENT_MD, true);
 		testConfigService.setUserConfiguration(PromptsConfig.USE_CLAUDE_MD, true);
 
-		const contextComputer = instaService.createInstance(ComputeAutomaticInstructions, ChatModeKind.Agent, undefined, undefined);
+		const contextComputer = instaService.createInstance(ComputeAutomaticInstructions, ChatModeKind.Agent, undefined, undefined, undefined);
 		const variables = new ChatRequestVariableSet();
 		variables.add(toFileVariableEntry(URI.joinPath(rootFolderUri, 'src/file.ts')));
 

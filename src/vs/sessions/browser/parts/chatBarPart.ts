@@ -31,32 +31,16 @@ export class ChatBarPart extends AbstractPaneCompositePart {
 
 	static readonly activeViewSettingsKey = 'workbench.chatbar.activepanelid';
 	static readonly pinnedViewsKey = 'workbench.chatbar.pinnedPanels';
-	static readonly placeholdeViewContainersKey = 'workbench.chatbar.placeholderPanels';
+	static readonly placeholderViewContainersKey = 'workbench.chatbar.placeholderPanels';
 	static readonly viewContainersWorkspaceStateKey = 'workbench.chatbar.viewContainersWorkspaceState';
 
-	// Use the side bar dimensions
-	override readonly minimumWidth: number = 170;
+	override readonly minimumWidth: number = 300;
 	override readonly maximumWidth: number = Number.POSITIVE_INFINITY;
 	override readonly minimumHeight: number = 0;
 	override readonly maximumHeight: number = Number.POSITIVE_INFINITY;
 
 	get preferredHeight(): number | undefined {
 		return this.layoutService.mainContainerDimension.height * 0.4;
-	}
-
-	get preferredWidth(): number | undefined {
-		const activeComposite = this.getActivePaneComposite();
-
-		if (!activeComposite) {
-			return undefined;
-		}
-
-		const width = activeComposite.getOptimalWidth();
-		if (typeof width !== 'number') {
-			return undefined;
-		}
-
-		return Math.max(width, 300);
 	}
 
 	readonly priority = LayoutPriority.High;
@@ -120,7 +104,7 @@ export class ChatBarPart extends AbstractPaneCompositePart {
 		return {
 			partContainerClass: 'chatbar',
 			pinnedViewContainersKey: ChatBarPart.pinnedViewsKey,
-			placeholderViewContainersKey: ChatBarPart.placeholdeViewContainersKey,
+			placeholderViewContainersKey: ChatBarPart.placeholderViewContainersKey,
 			viewContainersWorkspaceStateKey: ChatBarPart.viewContainersWorkspaceStateKey,
 			icon: false,
 			orientation: ActionsOrientation.HORIZONTAL,

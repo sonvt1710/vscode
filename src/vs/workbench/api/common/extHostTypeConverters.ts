@@ -2987,8 +2987,13 @@ export namespace ChatToolInvocationPart {
 				language: data.language
 			};
 		} else if ('commandLine' in data && 'language' in data) {
+			const presentationOverrides = data.presentationOverrides && typeof data.presentationOverrides.commandLine === 'string' ? {
+				commandLine: data.presentationOverrides.commandLine,
+				language: data.presentationOverrides.language
+			} : undefined;
 			const result: IChatTerminalToolInvocationData = {
 				kind: 'terminal',
+				presentationOverrides,
 				commandLine: data.commandLine,
 				language: data.language,
 				terminalCommandOutput: typeof data.output?.text === 'string' ? {
@@ -3604,7 +3609,8 @@ export namespace ChatRequestModeInstructions {
 				name: mode.name,
 				content: mode.content,
 				toolReferences: ChatLanguageModelToolReferences.to(mode.toolReferences),
-				metadata: mode.metadata
+				metadata: mode.metadata,
+				isBuiltin: mode.isBuiltin,
 			};
 		}
 		return undefined;
@@ -3868,6 +3874,9 @@ export namespace LanguageModelToolResult {
 		if (result.toolMetadata !== undefined) {
 			toolResult.toolMetadata = result.toolMetadata;
 		}
+		if (result.toolResultError) {
+			toolResult.hasError = !!result.toolResultError;
+		}
 		return toolResult;
 	}
 
@@ -3933,6 +3942,7 @@ export namespace LanguageModelToolResult {
 			toolResultMessage: MarkdownString.fromStrict(result.toolResultMessage),
 			toolResultDetails: detailsDto,
 			toolMetadata: result.toolMetadata,
+			toolResultError: result.hasError,
 		};
 
 		return hasBuffers ? new SerializableObjectWithBuffers(dto) : dto;

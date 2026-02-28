@@ -73,15 +73,16 @@ const toolIdThatCannotBeAutoApproved = 'vscode_get_confirmation_with_options';
 
 export const globalAutoApproveDescription = localize2(
 	{
-		key: 'autoApprove2.markdown',
+		key: 'autoApprove3.markdown',
 		comment: [
 			'{Locked=\'](https://github.com/features/codespaces)\'}',
 			'{Locked=\'](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers)\'}',
 			'{Locked=\'](https://code.visualstudio.com/docs/copilot/security)\'}',
 			'{Locked=\'**\'}',
+			'{Locked=\'[`chat.autoReply`](command:workbench.action.openSettings?%5B%22chat.autoReply%22%5D)\'}',
 		]
 	},
-	'Global auto approve also known as "YOLO mode" disables manual approval completely for _all tools in all workspaces_, allowing the agent to act fully autonomously. This is extremely dangerous and is *never* recommended, even containerized environments like [Codespaces](https://github.com/features/codespaces) and [Dev Containers](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers) have user keys forwarded into the container that could be compromised.\n\n**This feature disables [critical security protections](https://code.visualstudio.com/docs/copilot/security) and makes it much easier for an attacker to compromise the machine.**'
+	'Global auto approve also known as "YOLO mode" disables manual approval completely for _all tools in all workspaces_, allowing the agent to act fully autonomously. This is extremely dangerous and is *never* recommended, even containerized environments like [Codespaces](https://github.com/features/codespaces) and [Dev Containers](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers) have user keys forwarded into the container that could be compromised.\n\n**This feature disables [critical security protections](https://code.visualstudio.com/docs/copilot/security) and makes it much easier for an attacker to compromise the machine.**\n\nNote: This setting only controls tool approval and does not prevent the agent from asking questions. To automatically answer agent questions, use the [`chat.autoReply`](command:workbench.action.openSettings?%5B%22chat.autoReply%22%5D) setting.'
 );
 
 export class LanguageModelToolsService extends Disposable implements ILanguageModelToolsService {
@@ -1106,9 +1107,8 @@ export class LanguageModelToolsService extends Disposable implements ILanguageMo
 			],
 			custom: {
 				icon: Codicon.warning,
-				disableCloseAction: true,
 				markdownDetails: [{
-					markdown: new MarkdownString(globalAutoApproveDescription.value),
+					markdown: new MarkdownString(globalAutoApproveDescription.value, { isTrusted: { enabledCommands: ['workbench.action.openSettings'] } }),
 				}],
 			}
 		});
@@ -1149,6 +1149,7 @@ export class LanguageModelToolsService extends Disposable implements ILanguageMo
 		// Clean up any pending tool calls that belong to this request
 		for (const [toolCallId, invocation] of this._pendingToolCalls) {
 			if (invocation.chatRequestId === requestId) {
+				invocation.cancelFromStreaming(ToolConfirmKind.Skipped);
 				this._pendingToolCalls.delete(toolCallId);
 			}
 		}
@@ -1437,7 +1438,15 @@ export class LanguageModelToolsService extends Disposable implements ILanguageMo
 					add(alias, fullReferenceName);
 				}
 				if (tool.legacyToolReferenceFullNames) {
+					// If the tool is in a toolset (fullReferenceName has a '/'), also add the
+					// namespaced form of legacy names (e.g. 'vscode/oldName' → 'vscode/newName')
+					const slashIndex = fullReferenceName.lastIndexOf('/');
+					const toolSetPrefix = slashIndex !== -1 ? fullReferenceName.substring(0, slashIndex + 1) : undefined;
+
 					for (const legacyName of tool.legacyToolReferenceFullNames) {
+						if (toolSetPrefix && !legacyName.includes('/')) {
+							add(toolSetPrefix + legacyName, fullReferenceName);
+						}
 						// for any 'orphaned' toolsets (toolsets that no longer exist and
 						// do not have an explicit legacy mapping), we should
 						// just point them to the list of tools directly
